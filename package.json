@@ -3,21 +3,52 @@
   "displayName": "Liferay IDE Vscode Plugin",
   "description": "Liferay IDE Vscode Plugin",
   "version": "0.0.1",
+  "publisher": "Liferay",
   "engines": {
     "vscode": "^1.74.0"
   },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/simonjhy/liferay-ide-vscode-plugin"
+  },
   "categories": [
-    "Other"
+    "Programming Languages"
   ],
+  "pricing": "Free",
   "activationEvents": [
-    "onCommand:liferay-ide-vscode-plugin.helloWorld"
+    "onCommand: new.liferay.workspace",
+    "onCommand: new.liferay.client.extension",
+    "onCommand: new.liferay.module",
+    "onCommand: new.liferay.sprign.module",
+    "onCommand: new.liferay.jsf.module",
+    "onCommand: new.liferay.fragment.module"
   ],
   "main": "./dist/extension.js",
   "contributes": {
     "commands": [
       {
-        "command": "liferay-ide-vscode-plugin.helloWorld",
-        "title": "Hello World"
+        "command": "new.liferay.workspace",
+        "title": "New Liferay Workspace Project"
+      },
+      {
+        "command": "new.liferay.client.extension",
+        "title": "New Liferay Client Extension Project"
+      },
+      {
+        "command": "new.liferay.module",
+        "title": "New Liferay Module Project"
+      },
+      {
+        "command": "new.liferay.spring.module",
+        "title": "New Liferay Spring Module Project"
+      },
+      {
+        "command": "new.liferay.jsf.module",
+        "title": "New Liferay JSF Module Project"
+      },
+      {
+        "command": "new.liferay.fragment.module",
+        "title": "New Liferay Fragment Module Project"
       }
     ]
   },
@@ -33,19 +64,31 @@
     "test": "node ./out/test/runTest.js"
   },
   "devDependencies": {
-    "@types/vscode": "^1.74.0",
+    "@types/winreg": "^1.2.30",
+    "@types/fs-extra": "^8.0.0",
     "@types/glob": "^8.0.0",
+    "@types/lodash": "^4.14.191",
     "@types/mocha": "^10.0.1",
     "@types/node": "16.x",
+    "@types/vscode": "^1.74.0",
     "@typescript-eslint/eslint-plugin": "^5.45.0",
     "@typescript-eslint/parser": "^5.45.0",
+    "@vscode/test-electron": "^2.2.3",
     "eslint": "^8.28.0",
     "glob": "^8.0.3",
     "mocha": "^10.1.0",
-    "typescript": "^4.9.3",
     "ts-loader": "^9.4.1",
+    "typescript": "^4.9.3",
     "webpack": "^5.75.0",
-    "webpack-cli": "^5.0.0",
-    "@vscode/test-electron": "^2.2.0"
+    "webpack-cli": "^5.0.0"
+  },
+  "dependencies": {
+    "winreg-utf8": "^0.1.1",
+    "find-java-home": "1.1.0",
+    "expand-home-dir": "0.0.3",
+    "fs-extra": "^8.1.0",
+    "jdk-utils": "^0.4.4",
+    "lodash": "^4.17.21"
+    
   }
 }

@@ -1,6 +1,13 @@
 // The module 'vscode' contains the VS Code extensibility API
 // Import the module and reference it with the alias vscode in your code below
 import * as vscode from 'vscode';
+import { Commands } from './commands';
+import { window, commands, ExtensionContext } from 'vscode';
+import { showQuickPick, showInputBox } from './basicInput';
+import { gradleWorkspaceStepInput as Gradle } from './gradleProjectInput';
+import { quickOpen } from './quickOpen';
+import { findJavaRuntimeEntries } from './java-runtime';
+import { findJavaHomes, JavaRuntime } from './java-runtime/findJavaHomes';
 
 // This method is called when your extension is activated
 // Your extension is activated the very first time the command is executed
@@ -12,15 +19,62 @@ export function activate(context: vscode.ExtensionContext) {
 
 	// The command has been defined in the package.json file
 	// Now provide the implementation of the command with registerCommand
-	// The commandId parameter must match the command field in package.json
-	let disposable = vscode.commands.registerCommand('liferay-ide-vscode-plugin.helloWorld', () => {
-		// The code you place here will be executed every time your command is executed
-		// Display a message box to the user
-		vscode.window.showInformationMessage('Hello World from Liferay IDE Vscode Plugin!');
-	});
+	// The commandId parameter must match the command field in package.json	
+	context.subscriptions.push(vscode.commands.registerCommand(Commands.NEW_LIFERAY_WORKSAPCE, async () => {
+		const options: { [key: string]: (context: ExtensionContext) => Promise<void> } = {
+			//showQuickPick,
+			//showInputBox,
+			Gradle
+			//quickOpen,
+		};
+		const quickPick = window.createQuickPick();
+		quickPick.items = Object.keys(options).map(label => ({ label }));
+		quickPick.onDidChangeSelection(selection => {
+			if (selection[0]) {
+				options[selection[0].label](context)
+					.catch(console.error);
+			}
+		});
+		quickPick.onDidHide(() => quickPick.dispose());
+		quickPick.show();
+	}));
 
-	context.subscriptions.push(disposable);
+	context.subscriptions.push(vscode.commands.registerCommand(Commands.NEW_LIFERAY_MODULE, async () => {
+		const options: vscode.QuickPickItem[] = [
+			{ label: '选项 1', description: '这是选项 1 的描述' },
+			{ label: '选项 2', description: '这是选项 2 的描述' },
+			{ label: '选项 3', description: '这是选项 3 的描述' },
+			{ label: '选项 4', description: '这是选项 4 的描述' },
+			{ label: '选项 5', description: '这是选项 5 的描述' },
+		];
+	
+		const quickPick = window.createQuickPick();
+		quickPick.canSelectMany = false; // 开启 Multiple Selections
+		quickPick.items = options;
+	
+	
+		// 处理 Quick Pick 的选择结果
+		quickPick.onDidAccept(() => {
+			const selectedItems = quickPick.selectedItems;
+			quickPick.dispose(); // 关闭 Quick Pick
+			console.log('选中项：', selectedItems); // 执行命令
+		});
+	
+		// 显示 Quick Pick
+		quickPick.show();
+	}));
+
+	findJavaHomes().then((runtimes: JavaRuntime[]) => {
+		runtimes.forEach(runtime => 
+			console.log(runtime.home + ' ' +runtime.version));
+	  })
+	  .catch((error: any) => {
+		console.error(error);
+	  });
+	
+
+	
+	//context.subscriptions.push(disposable);
 }
 
-// This method is called when your extension is deactivated
-export function deactivate() {}
+
