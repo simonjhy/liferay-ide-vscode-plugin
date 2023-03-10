@@ -8,6 +8,8 @@ import { gradleWorkspaceStepInput as Gradle } from './gradleProjectInput';
 import { quickOpen } from './quickOpen';
 import { findJavaRuntimeEntries } from './java-runtime';
 import { findJavaHomes, JavaRuntime } from './java-runtime/findJavaHomes';
+import { spawn, execFile, execSync } from 'child_process';
+
 
 // This method is called when your extension is activated
 // Your extension is activated the very first time the command is executed
@@ -72,8 +74,21 @@ export function activate(context: vscode.ExtensionContext) {
 		console.error(error);
 	  });
 	
+	const bladeJarPath = context.asAbsolutePath('resources/dependencies/blade.jar');
 
-	
+	// console.log(bladeJarPath);
+
+	// let productVersions: string[] = [];
+	// const jarProcess = spawn('C:\\java\\zulu\\11\\bin\\java', ['-jar', bladeJarPath, "init", "--list"]);
+	// console.log("Call java process "  + jarProcess.exitCode);
+
+	// const result = execSync('C:/java/zulu/11/bin/java -jar ' + bladeJarPath + ' init --list');
+
+	// execFile('C:\\java\\zulu\\11\\bin\\java', ['-jar', bladeJarPath, 'init', '--list'], (_error, _stdout) =>{
+	// 	console.log("Call java process output ["  + _stdout + "]");
+	// });
+	// console.log("Call java process output ["  + result + "]");
+
 	//context.subscriptions.push(disposable);
 }
 

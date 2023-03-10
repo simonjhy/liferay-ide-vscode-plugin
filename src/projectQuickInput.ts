@@ -19,6 +19,7 @@ export interface QuickPickParameters<T extends QuickPickItem> {
 	placeholder: string;
 	buttons?: QuickInputButton[];
 	shouldResume: () => Thenable<boolean>;
+	initQuickItems: () => Promise<T[]>;
 }
 
 export interface InputBoxParameters {
@@ -70,7 +71,7 @@ export class ProjectStepInput {
 		}
 	}
 
-	async showQuickPick<T extends QuickPickItem, P extends QuickPickParameters<T>>({ title, step, totalSteps, items, activeItem, placeholder, buttons, shouldResume }: P) {
+	async showQuickPick<T extends QuickPickItem, P extends QuickPickParameters<T>>({ title, step, totalSteps, items, activeItem, placeholder, buttons, shouldResume, initQuickItems }: P) {
 		const disposables: Disposable[] = [];
 		try {
 			return await new Promise<T | (P extends { buttons: (infer I)[] } ? I : never)>((resolve, reject) => {
@@ -79,7 +80,12 @@ export class ProjectStepInput {
 				input.step = step;
 				input.totalSteps = totalSteps;
 				input.placeholder = placeholder;
-				input.items = items;
+				input.ignoreFocusOut = true;
+				//input.items = await initQuickItems;
+				initQuickItems().then(initItems => {
+					input.items = initItems;
+				});
+				
 				if (activeItem) {
 					input.activeItems = [activeItem];
 				}
@@ -95,7 +101,11 @@ export class ProjectStepInput {
 							resolve(<any>item);
 						}
 					}),
-					input.onDidChangeSelection(items => resolve(items[0])),
+					input.onDidChangeSelection(items => {
+						console.log("Items are :" + items);
+
+						resolve(items[0]);
+					}),
 					input.onDidHide(() => {
 						(async () => {
 							reject(shouldResume && await shouldResume() ? InputFlowAction.resume : InputFlowAction.cancel);
@@ -124,6 +134,8 @@ export class ProjectStepInput {
 				input.totalSteps = totalSteps;
 				input.value = value || '';
 				input.prompt = prompt;
+				input.busy = true;
+				input.ignoreFocusOut = true;
 				input.buttons = [
 					...(this.steps.length > 1 ? [QuickInputButtons.Back] : []),
 					...(buttons || [])
