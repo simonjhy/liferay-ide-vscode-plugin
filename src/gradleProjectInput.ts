@@ -8,13 +8,8 @@ import { ProjectStepInput } from './projectQuickInput';
 import { spawnSync } from 'child_process';
 import fetch from 'node-fetch';
 import { Comparator } from 'lodash';
+import { findJavaHomes, JavaRuntime } from './java-runtime/findJavaHomes';
 
-
-/**
- * A multi-step input using window.createQuickPick() and window.createInputBox().
- * 
- * This first part uses the helper class `MultiStepInput` that wraps the API for the multi-step case.
- */
 export async function gradleWorkspaceStepInput(context: ExtensionContext) {
 
 	class MyButton implements QuickInputButton {
@@ -25,9 +20,6 @@ export async function gradleWorkspaceStepInput(context: ExtensionContext) {
 		dark: Uri.file(context.asAbsolutePath('resources/dark/add.svg')),
 		light: Uri.file(context.asAbsolutePath('resources/light/add.svg')),
 	}, 'Create Resource Group');
-
-	const resourceGroups: QuickPickItem[] = ['vscode-data-function', 'vscode-appservice-microservices', 'vscode-appservice-monitor', 'vscode-appservice-preview', 'vscode-appservice-prod']
-		.map(label => ({ label }));
 
 
 	interface State {
@@ -82,21 +74,15 @@ export async function gradleWorkspaceStepInput(context: ExtensionContext) {
 		// 	return productVersions.map(label => ({ label }));
 		// 	//return outputArray.map(label => ({ label }));
 		// });
+		let javahome : JavaRuntime[] = await findJavaHomes();
 
-		const result  = spawnSync('C:\\java\\zulu\\11\\bin\\java.exe', ['-jar', bladeJarPath, 'init', '--list'], { encoding: 'utf-8' });
+		const result  = spawnSync(javahome[0].home + '/bin/java', ['-jar', bladeJarPath, 'init', '--list'], { encoding: 'utf-8' });
 
-		// if (result.status === 0) {
-		// 	//console.log(result.stdout);
-		//   } else {
-		// 	///console.error(result.stderr);
-		//   }
-
-		// console.log("Call subprocess output "  + result.stdout.split('\n'));
-
-
-		//let productInfos = await getAvailableProductVersionsFromLiferay();
-
-		//console.log("ProductInof is :" + productInfos);
+		if (result.status === 0) {
+			console.log(result.stdout);
+		  } else {
+			console.error(result.stderr);
+		  }
 
 		productVersions =  result.stdout.split('\n');
 
@@ -116,7 +102,8 @@ export async function gradleWorkspaceStepInput(context: ExtensionContext) {
 		// 	//return outputArray.map(label => ({ label }));
 		// });
 
-		const result  = spawnSync('C:\\java\\zulu\\11\\bin\\java.exe', ['-jar', bladeJarPath, 'create', '-l'], { encoding: 'utf-8' });
+		let javahome : JavaRuntime[] = await findJavaHomes();
+		const result  = spawnSync(javahome[0].home + '/bin/java', ['-jar', bladeJarPath, 'create', '-l'], { encoding: 'utf-8' });
 
 		// if (result.status === 0) {
 		// 	//console.log(result.stdout);
@@ -237,8 +224,3 @@ export async function gradleWorkspaceStepInput(context: ExtensionContext) {
 	console.log("runtime version is " + moduleType.label);
 
 }
-
-
-// -------------------------------------------------------
-// Helper code that wraps the API for the multi-step case.
-// -------------------------------------------------------

@@ -3,7 +3,7 @@
 /**
  * Commonly used commands
  */
-export namespace Commands {
+namespace Constants {
     export const NEW_LIFERAY_WORKSAPCE = 'new.liferay.workspace';
 
     export const NEW_LIFERAY_CLIENT_EXTENSION = 'new.liferay.client.extension';
@@ -19,4 +19,8 @@ export namespace Commands {
     export const GET_ALL_JAVA_PROJECTS = 'java.project.getAll';
 
     export const EXECUTE_WORKSPACE_COMMAND = 'java.execute.workspaceCommand';
+
+    export const REQUIRED_JDK_VERSION = 11;
 }
+
+export default Constants;

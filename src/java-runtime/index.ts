@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/naming-convention */
 import * as _ from "lodash";
 import { JavaRuntimeEntry, ProjectRuntimeEntry, ProjectType } from "./types";
 import * as fse from "fs-extra";
@@ -5,10 +6,11 @@ import { findRuntimes, getRuntime, getSources, IJavaRuntime, JAVAC_FILENAME, JAV
 import * as path from "path";
 import * as vscode from "vscode";
 import { env, workspace } from 'vscode';
+import Constants from "../constants";
 
 
 let javaHomes: IJavaRuntime[];
-export const REQUIRED_JDK_VERSION = 17;
+//export const REQUIRED_JDK_VERSION = 17;
 const expandHomeDir = require("expand-home-dir");
 
 export async function findJavaRuntimeEntries(): Promise<{
@@ -35,8 +37,8 @@ export async function findJavaRuntimeEntries(): Promise<{
       const runtime = await resolveRequirements();
       javaDotHome = runtime.tooling_jre;
       const javaVersion = runtime.tooling_jre_version;
-      if (!javaVersion || javaVersion < REQUIRED_JDK_VERSION) {
-        javaHomeError = `Java ${REQUIRED_JDK_VERSION} or more recent is required by the Java language support (redhat.java) extension. Preferred JDK "${javaDotHome}" (version ${javaVersion}) doesn't meet the requirement. Please specify or install a recent JDK.`;
+      if (!javaVersion || javaVersion < Constants.REQUIRED_JDK_VERSION) {
+        javaHomeError = `Java ${Constants.REQUIRED_JDK_VERSION} or more recent is required by the Java language support (redhat.java) extension. Preferred JDK "${javaDotHome}" (version ${javaVersion}) doesn't meet the requirement. Please specify or install a recent JDK.`;
       }
     } catch (error) {
       javaHomeError = (error as Error).message;
@@ -234,7 +236,7 @@ export async function resolveRequirements(): Promise<{
     java_home: string | undefined; // Used as default project JDK.
     java_version: number;
 }> {
-    const javaExtPath: string | undefined = vscode.extensions.getExtension("redhat.java")?.extensionPath
+    const javaExtPath: string | undefined = vscode.extensions.getExtension("redhat.java")?.extensionPath;
     let toolingJre: string | undefined = await findEmbeddedJRE(javaExtPath);
     let toolingJreVersion: number = await getMajorVersion(toolingJre);
     return new Promise(async (resolve, reject) => {
@@ -269,7 +271,7 @@ export async function resolveRequirements(): Promise<{
         if (!toolingJre) { // universal version
             // as latest version as possible.
             sortJdksByVersion(javaRuntimes);
-            const validJdks = javaRuntimes.filter(r => r.version && r.version.major >= REQUIRED_JDK_VERSION);
+            const validJdks = javaRuntimes.filter(r => r.version && r.version.major >= Constants.REQUIRED_JDK_VERSION);
             if (validJdks.length > 0) {
                 sortJdksBySource(validJdks);
                 javaHome = validJdks[0].homedir;
@@ -309,9 +311,9 @@ export async function resolveRequirements(): Promise<{
         }
         
 
-        if (!toolingJre || toolingJreVersion < REQUIRED_JDK_VERSION) {
+        if (!toolingJre || toolingJreVersion < Constants.REQUIRED_JDK_VERSION) {
             // For universal version, we still require users to install a qualified JDK to run Java extension.
-            invalidJavaHome(reject, `Java ${REQUIRED_JDK_VERSION} or more recent is required to run the Java extension. Please download and install a recent JDK. You can still compile your projects with older JDKs by configuring ['java.configuration.runtimes'](https://github.com/redhat-developer/vscode-java/wiki/JDK-Requirements#java.configuration.runtimes)`);
+            invalidJavaHome(reject, `Java ${Constants.REQUIRED_JDK_VERSION} or more recent is required to run the Java extension. Please download and install a recent JDK. You can still compile your projects with older JDKs by configuring ['java.configuration.runtimes'](https://github.com/redhat-developer/vscode-java/wiki/JDK-Requirements#java.configuration.runtimes)`);
         }
 
         resolve({

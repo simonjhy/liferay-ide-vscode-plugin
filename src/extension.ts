@@ -1,7 +1,7 @@
 // The module 'vscode' contains the VS Code extensibility API
 // Import the module and reference it with the alias vscode in your code below
 import * as vscode from 'vscode';
-import { Commands } from './commands';
+import Commands from './constants';
 import { window, commands, ExtensionContext } from 'vscode';
 import { showQuickPick, showInputBox } from './basicInput';
 import { gradleWorkspaceStepInput as Gradle } from './gradleProjectInput';

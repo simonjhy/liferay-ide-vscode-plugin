@@ -1,15 +1,11 @@
 'use strict';
 
-import * as fse from 'fs-extra';
 import * as fs from 'fs';
 import { PathLike } from 'fs';
 import * as path from 'path';
-import { workspace, WorkspaceConfiguration, commands, Uri, version, env, ExtensionContext, window } from 'vscode';
-import { Commands } from './commands';
+import { workspace, WorkspaceConfiguration } from 'vscode';
 import { promisify } from 'util';
 import { exec } from 'child_process';
-import { JAVA_FILENAME, getRuntime, JAVAC_FILENAME, findRuntimes, getSources, IJavaRuntime } from 'jdk-utils';
-import { JavaRuntimeEntry, ProjectRuntimeEntry } from './java-runtime/types';
 
 export function getJavaConfiguration(): WorkspaceConfiguration {
 	return workspace.getConfiguration('java');
