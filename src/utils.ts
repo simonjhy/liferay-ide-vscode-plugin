@@ -6,6 +6,10 @@ import * as path from 'path';
 import { workspace, WorkspaceConfiguration } from 'vscode';
 import { promisify } from 'util';
 import { exec } from 'child_process';
+import fetch, { Response } from 'node-fetch';
+import * as vscode from 'vscode';
+import * as os from 'os';
+import Constants from './constants';
 
 export function getJavaConfiguration(): WorkspaceConfiguration {
 	return workspace.getConfiguration('java');
@@ -57,3 +61,55 @@ export async function callJarFileAsync(): Promise<void> {
 	  console.error(err);
 	}
 }
+
+const cacheDir = path.join(os.homedir(), Constants.BLADE_CACHE_DIR);
+export async function downloadJarFile(url: string, fileName: string): Promise<string> {
+	
+	const cacheDirExists = fs.existsSync(cacheDir);
+
+	if (!cacheDirExists) {
+		fs.mkdir(cacheDir, { recursive: true }, (err) => {
+			if (err) {
+				throw new Error(`Failed to create blade cache directory ${cacheDir}.`);
+			}
+			console.log(`Directory ${cacheDir} created successfully`);
+		});		
+	}
+  
+	const savePath = path.join(cacheDir, fileName);
+
+	// Check if the file already exists
+	const fileExists = fs.existsSync(savePath);
+	if (fileExists) {
+	  const stats = fs.statSync(savePath);
+	  const fileModifiedTime = stats.mtimeMs;
+	  // Check if the file needs to be updated
+	  const response = await fetch(url);
+	  if (!response.ok) {
+		throw new Error(`Failed to download file from ${url}.`);
+	  }
+	  const remoteModifiedTime = new Date(response.headers.get('last-modified')!).getTime();
+	  if (remoteModifiedTime <= fileModifiedTime) {
+		return savePath;
+	  }
+	}
+  
+	const response = await fetch(url);
+	if (!response.ok) {
+	  throw new Error(`Failed to download file from ${url}.`);
+	}
+  
+	const fileStream = fs.createWriteStream(savePath);
+
+	if (response.body === undefined || response.body === null) {
+		throw new Error('Response body is empty');
+	}
+
+	response.body.pipe(fileStream);
+  
+	return new Promise<string>((resolve, reject) => {
+	  fileStream.on('finish', () => resolve(savePath));
+	  fileStream.on('error', reject);
+	});
+  }
+  

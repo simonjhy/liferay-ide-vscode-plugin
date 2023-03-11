@@ -21,6 +21,10 @@ namespace Constants {
     export const EXECUTE_WORKSPACE_COMMAND = 'java.execute.workspaceCommand';
 
     export const REQUIRED_JDK_VERSION = 11;
+
+    export const BLADE_DOWNLOAD_URL = 'https://repository-cdn.liferay.com/nexus/content/repositories/liferay-public-snapshots/com/liferay/blade/com.liferay.blade.cli/4.1.2-SNAPSHOT/com.liferay.blade.cli-4.1.2-20230307.022352-12.jar';
+
+    export const BLADE_CACHE_DIR = '.liferay/blade'; 
 }
 
 export default Constants;
