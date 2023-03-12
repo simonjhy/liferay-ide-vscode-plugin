@@ -81,9 +81,9 @@
     "lodash": "^4.17.21",
     "mocha": "^10.1.0",
     "ts-loader": "^9.4.1",
-    "typescript": "^4.9.3",
-    "webpack": "^5.75.0",
-    "webpack-cli": "^5.0.0"
+    "typescript": "^4.9.5",
+    "webpack": "^5.76.1",
+    "webpack-cli": "^5.0.1"
   },
   "dependencies": {
     "expand-home-dir": "0.0.3",
@@ -92,6 +92,7 @@
     "jdk-utils": "^0.4.4",
     "lodash": "^4.17.21",
     "node-fetch": "^3.1.0",
+    "vscode": "^1.76.0",
     "winreg-utf8": "^0.1.1"
   }
 }

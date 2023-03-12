@@ -103,8 +103,6 @@ export class ProjectStepInput {
 						}
 					}),
 					input.onDidChangeSelection(items => {
-						console.log("Items are :" + items);
-
 						resolve(items[0]);
 					}),
 					input.onDidHide(() => {

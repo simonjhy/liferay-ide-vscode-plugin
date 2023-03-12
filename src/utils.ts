@@ -9,7 +9,8 @@ import { exec } from 'child_process';
 import fetch, { Response } from 'node-fetch';
 import * as vscode from 'vscode';
 import * as os from 'os';
-import Constants from './constants';
+import { JavaRuntime } from './java-runtime/findJavaHomes';
+
 
 export function getJavaConfiguration(): WorkspaceConfiguration {
 	return workspace.getConfiguration('java');
@@ -17,6 +18,20 @@ export function getJavaConfiguration(): WorkspaceConfiguration {
 
 export function getLiferayConfiguration(): WorkspaceConfiguration {
 	return workspace.getConfiguration('liferay');
+}
+
+export interface ProductInfo{
+
+	appServerTomcatVersion: string;
+	bundleUrl: string;
+	liferayDockerImage: string;
+	liferayProductVersion: string;
+	promoted: boolean;
+	releaseDate: Date;
+	bundleChecksumMD5: string;
+	bundleChecksumMD5Url: string;
+	targetPlatformVersion: string;
+
 }
 
 export function deleteDirectory(dir : PathLike) {
@@ -62,9 +77,8 @@ export async function callJarFileAsync(): Promise<void> {
 	}
 }
 
-const cacheDir = path.join(os.homedir(), Constants.BLADE_CACHE_DIR);
-export async function downloadJarFile(url: string, fileName: string): Promise<string> {
-	
+export async function downloadFile(url: string, cacheDirName: string, fileName: string): Promise<string> {
+	const cacheDir = path.join(os.homedir(), cacheDirName);	
 	const cacheDirExists = fs.existsSync(cacheDir);
 
 	if (!cacheDirExists) {
@@ -113,3 +127,52 @@ export async function downloadJarFile(url: string, fileName: string): Promise<st
 	});
   }
   
+
+  export function getJavaExecutable(javaHome: JavaRuntime): string{
+	if (process.platform === 'win32') {
+		return path.join(javaHome.home, '/bin/java.exe');
+	} else if ((process.platform === 'darwin') || (process.platform === 'linux')) {
+		return path.join(javaHome.home, '/bin/java');
+	}
+
+	return 'underfined';
+  }
+
+  function openWorkspaceFolder(workspacePath: string){
+	const uri = vscode.Uri.file(workspacePath);
+	const workspaceFolder = vscode.workspace.updateWorkspaceFolders(0, 0, { uri });
+	vscode.workspace.getWorkspaceFolder(uri);
+	vscode.commands.executeCommand('vscode.openFolder', uri, false);
+  }
+
+  export async function openCurrentLiferayWorkspaceProject(workspacePath: string): Promise<void> {
+	const folderPath = vscode.workspace.workspaceFolders || (vscode.window.activeTextEditor && path.dirname(vscode.window.activeTextEditor.document.uri.fsPath));
+    if (!folderPath) {
+      vscode.window.showErrorMessage('Can not open the workspace project');
+      return;
+    }
+	const folderUri = vscode.Uri.file(workspacePath);
+  
+    const workspaceFolders = vscode.workspace.workspaceFolders;
+    if (!workspaceFolders) {
+	   openWorkspaceFolder(workspacePath);
+    } else {
+		const confirmResult = await vscode.window.showWarningMessage(`Do you want to close current workspace folder and open ${folderUri} as a new workspace folder?`, 'Yes', 'No');
+		if (confirmResult === 'Yes') {
+			let currentWorkspaceFolders = vscode.workspace.workspaceFolders;
+
+			if (currentWorkspaceFolders === undefined ){
+				return;
+			}
+			else{
+				const currentWorkspaceFolder = currentWorkspaceFolders[0];
+				vscode.workspace.updateWorkspaceFolders(currentWorkspaceFolder.index, 1,);
+				vscode.commands.executeCommand('workbench.action.closeFolder');
+			}
+		} else {
+			return;
+		}
+
+		openWorkspaceFolder(workspacePath);
+    }
+  }

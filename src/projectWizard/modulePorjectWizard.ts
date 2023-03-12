@@ -8,7 +8,7 @@ import { ProjectStepInput } from './baseProjectWizard';
 import { spawnSync } from 'child_process';
 import { findJavaHomes, JavaRuntime } from '../java-runtime/findJavaHomes';
 import Constants from '../constants';
-import { downloadJarFile } from '../utils';
+import { downloadFile } from '../utils';
 
 export async function createLiferayModuleProject(context: ExtensionContext) {
 
@@ -62,7 +62,7 @@ export async function createLiferayModuleProject(context: ExtensionContext) {
 
 
 	async function getAvailableProductVersions(): Promise<QuickPickItem[]> {
-		const bladeJarPath = await downloadJarFile(Constants.BLADE_DOWNLOAD_URL,"blade.jar");
+		const bladeJarPath = await downloadFile(Constants.BLADE_DOWNLOAD_URL, Constants.BLADE_CACHE_DIR,"blade.jar");
 
 		let productVersions: string[] = [];
 
@@ -87,7 +87,7 @@ export async function createLiferayModuleProject(context: ExtensionContext) {
 	}
 
 	async function getAvailableModuleTypes(): Promise<QuickPickItem[]> {
-		const bladeJarPath = await downloadJarFile(Constants.BLADE_DOWNLOAD_URL,"blade.jar");
+		const bladeJarPath = await downloadFile(Constants.BLADE_DOWNLOAD_URL, Constants.BLADE_CACHE_DIR,"blade.jar");
 
 		let productVersions: string[] = [];
 

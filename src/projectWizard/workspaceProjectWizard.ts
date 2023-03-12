@@ -1,9 +1,11 @@
-import { QuickPickItem, window, QuickInputButton, ExtensionContext, Uri, ProgressLocation, workspace } from 'vscode';
+import { QuickPickItem, window, QuickInputButton, ExtensionContext, Uri } from 'vscode';
 import { ProjectStepInput } from './baseProjectWizard';
 import { spawnSync } from 'child_process';
 import { findJavaHomes, JavaRuntime } from '../java-runtime/findJavaHomes';
 import Constants from '../constants';
-import { downloadJarFile } from '../utils';
+import { downloadFile, getJavaExecutable, openCurrentLiferayWorkspaceProject, ProductInfo } from '../utils';
+import * as fs from 'fs';
+import path = require('path');
 
 export async function initLiferayWorkpsceProject(context: ExtensionContext, workspaceType: string) {
 
@@ -21,6 +23,7 @@ export async function initLiferayWorkpsceProject(context: ExtensionContext, work
 		step: number;
 		totalSteps: number;
 		workspaceProduct: QuickPickItem | string;
+		targetPlatform: QuickPickItem | string;
 		name: string;
 		path: string;
 		runtime: QuickPickItem;
@@ -28,18 +31,18 @@ export async function initLiferayWorkpsceProject(context: ExtensionContext, work
 
 	async function initLiferayWorkspace() {
 		const state = {} as Partial<State>;
-		await ProjectStepInput.run(input => setWorkspaceName(input, state));
+		await ProjectStepInput.run(input => setWorkspacePath(input, state));
 		return state as State;
 	}
 
-	const title = 'Create Liferay Gradle Workspace Project';
+	const title = 'Create Liferay Workspace Project';
 
 	async function setWorkspaceProduct(input: ProjectStepInput, state: Partial<State>) {
 		
 		const loadingItems: QuickPickItem[] = [{ label: 'Loading.....', description: 'Wait to load workspace product versions' }];
 		const pick = await input.showQuickPick({
 			title,
-			step: 2,
+			step: 3,
 			totalSteps: 3,
 			placeholder: 'Please choose a prodcut version:',
 			items: loadingItems,
@@ -52,17 +55,75 @@ export async function initLiferayWorkpsceProject(context: ExtensionContext, work
 			return (input: ProjectStepInput) => inputResourceGroupName(input, state);
 		}
 		state.workspaceProduct = pick;
-		return (input: ProjectStepInput) => setWorkspacePath(input, state);
 	}
 
-	async function getAvailableProductVersions(): Promise<QuickPickItem[]> {
-		const bladeJarPath = await downloadJarFile(Constants.BLADE_DOWNLOAD_URL,"blade.jar");
+	async function setWorkspaceTargetPlatform(input: ProjectStepInput, state: Partial<State>) {
+		const loadingItems: QuickPickItem[] = [{ label: 'Loading.....', description: 'Wait to load workspace target platform versions' }];
+		const pick = await input.showQuickPick({
+			title,
+			step: 3,
+			totalSteps: 3,
+			placeholder: 'Please choose a target platform version:',
+			items: loadingItems,
+			activeItem: typeof state.targetPlatform !== 'string' ? state.targetPlatform : undefined,
+			buttons: [],
+			shouldResume: shouldResume,
+			initQuickItems: getAvailableTargetPlatformVersions
+		});
+		if (pick instanceof MyButton) {
+			return (input: ProjectStepInput) => inputResourceGroupName(input, state);
+		}
+		state.targetPlatform = pick;
+	}
 
+	async function getAvailableTargetPlatformVersions(): Promise<QuickPickItem[]> {
+		const bladeJarPath = await downloadFile(Constants.BLADE_DOWNLOAD_URL, Constants.BLADE_CACHE_DIR, Constants.BALDE_JAR_NAME);
+		
 		let productVersions: string[] = [];
 
 		let javahome : JavaRuntime[] = await findJavaHomes();
 
 		const result  = spawnSync(javahome[0].home + '/bin/java', ['-jar', bladeJarPath, 'init', '--list'], { encoding: 'utf-8' });
+
+		productVersions =  result.stdout.split('\n');
+
+		const productInfoPath = await downloadFile(Constants.PRODUCT_INFO_DOWNLOAD_URL, Constants.PRODUCT_INFO_CACHE_DIR, Constants.PRODUCT_INFO_NAME);
+
+		const jsonString = fs.readFileSync(productInfoPath, 'utf-8');
+
+		const productInfoMap = new Map<string, ProductInfo>();
+
+		const jsonObject = JSON.parse(jsonString);
+
+		for (const key in jsonObject) {
+			if (Object.prototype.hasOwnProperty.call(jsonObject, key)) {
+			  const productInfo = jsonObject[key] as ProductInfo;
+			  productInfoMap.set(key, productInfo);
+			}
+		}
+
+		let taretPlatformVersions: string[] = [];
+
+		productVersions.forEach((version) => {
+			let productInfo = productInfoMap.get(version);
+
+			if (productInfo !== undefined){
+				taretPlatformVersions.push(productInfo.targetPlatformVersion);
+			}
+		});
+
+		return taretPlatformVersions.map(label => ({ label }));
+	}
+
+
+	async function getAvailableProductVersions(): Promise<QuickPickItem[]> {
+		const bladeJarPath = await downloadFile(Constants.BLADE_DOWNLOAD_URL, Constants.BLADE_CACHE_DIR, Constants.BALDE_JAR_NAME);
+
+		let productVersions: string[] = [];
+
+		let javahome : JavaRuntime[] = await findJavaHomes();
+
+		const result  = spawnSync(getJavaExecutable(javahome[0]), ['-jar', bladeJarPath, 'init', '--list'], { encoding: 'utf-8' });
 
 		if (result.status !== 0) {
 			console.error(result.stderr);
@@ -87,31 +148,36 @@ export async function initLiferayWorkpsceProject(context: ExtensionContext, work
 	}
 
 	async function setWorkspacePath(input: ProjectStepInput, state: Partial<State>) {
-		// TODO: Remember current value when navigating back.
 		state.path = await input.showInputBox({
 			title,
-			step: 3,
+			step: 1,
 			totalSteps: 3,
 			value: state.path || '',
 			prompt: 'Please set project path for liferay gradle workspace',
 			validate: validateNameIsUnique,
 			shouldResume: shouldResume
 		});
+		return (input: ProjectStepInput) => setWorkspaceName(input, state);
 	}
 
 	async function setWorkspaceName(input: ProjectStepInput, state: Partial<State>) {
 		const additionalSteps = typeof state.name === 'string' ? 1 : 0;
-		// TODO: Remember current value when navigating back.
 		state.name = await input.showInputBox({
 			title,
-			step: 1,
+			step: 2,
 			totalSteps: 3,
 			value: state.name || '',
 			prompt: 'Choose a unique name for liferay gradle workspace project',
 			validate: validateNameIsUnique,
 			shouldResume: shouldResume
 		});
-		return (input: ProjectStepInput) => setWorkspaceProduct(input, state);
+
+		if (workspaceType === "Gradle"){
+			return (input: ProjectStepInput) => setWorkspaceProduct(input, state);
+		}
+		else{
+			return (input: ProjectStepInput) => setWorkspaceTargetPlatform(input, state);
+		}
 	}
 
 	function shouldResume() {
@@ -127,15 +193,30 @@ export async function initLiferayWorkpsceProject(context: ExtensionContext, work
 		return name === 'vscode' ? 'Name not unique' : undefined;
 	}
 
+	async function bladeInitWorkspace(): Promise<void> {
+		const bladeJarPath = await downloadFile(Constants.BLADE_DOWNLOAD_URL, Constants.BLADE_CACHE_DIR, Constants.BALDE_JAR_NAME);
+		let javahome : JavaRuntime[] = await findJavaHomes();
+		let  version: QuickPickItem;
+
+		if (workspaceType === 'Gradle'){
+			version = state.workspaceProduct as QuickPickItem;
+		}
+		else{
+			version = state.targetPlatform as QuickPickItem;
+		}
+
+		const result  = spawnSync(getJavaExecutable(javahome[0]), ['-jar', bladeJarPath, 'init', '-v', version.label, '-b', workspaceType.toLocaleLowerCase(), '--base', path.resolve(state.path), state.name], { encoding: 'utf-8' });
+
+		if (result.status !== 0) {
+			throw new Error(`Failed to init a ${workspaceType} liferay worksapce project in ${state.path}`);
+		}
+
+		openCurrentLiferayWorkspaceProject(path.join(path.resolve(state.path), state.name));
+	}
+
 	const state = await initLiferayWorkspace();
+
 	window.showInformationMessage(`Creating Application Service '${state.name}'`);
-	
-	const version =state.workspaceProduct as QuickPickItem;
-	const moduleType = state.runtime as QuickPickItem;
 
-	console.log("workspaceType is " + workspaceType);
-	console.log("product version is " + version.label);
-	console.log("runtime version is " + moduleType.label);
-	console.log("workspace path is " + state.path);
-
+	bladeInitWorkspace();
 }

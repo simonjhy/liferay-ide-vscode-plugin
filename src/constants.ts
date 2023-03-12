@@ -25,6 +25,14 @@ namespace Constants {
     export const BLADE_DOWNLOAD_URL = 'https://repository-cdn.liferay.com/nexus/content/repositories/liferay-public-snapshots/com/liferay/blade/com.liferay.blade.cli/4.1.2-SNAPSHOT/com.liferay.blade.cli-4.1.2-20230307.022352-12.jar';
 
     export const BLADE_CACHE_DIR = '.liferay/blade'; 
+
+    export const PRODUCT_INFO_CACHE_DIR = '.liferay/workspace'; 
+
+    export const PRODUCT_INFO_NAME = '.product_info.json'; 
+
+    export const BALDE_JAR_NAME = 'blade.jar'; 
+
+    export const PRODUCT_INFO_DOWNLOAD_URL = 'https://releases.liferay.com/tools/workspace/.product_info.json';
 }
 
 export default Constants;
