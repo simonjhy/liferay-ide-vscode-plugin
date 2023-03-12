@@ -7,6 +7,7 @@ import { window, ExtensionContext } from 'vscode';
 import { initLiferayWorkpsceProject as Gradle } from './projectWizard/workspaceProjectWizard';
 import { initLiferayWorkpsceProject as Maven } from './projectWizard/workspaceProjectWizard';
 import { findJavaHomes, JavaRuntime } from './java-runtime/findJavaHomes';
+import { createLiferayModuleProject } from './projectWizard/modulePorjectWizard';
 
 export function activate(context: vscode.ExtensionContext) {
 	console.log('Congratulations, your extension "liferay-ide-vscode-plugin" is now active!');
@@ -31,6 +32,10 @@ export function activate(context: vscode.ExtensionContext) {
 
 		quickPick.onDidHide(() => quickPick.dispose());
 		quickPick.show();
+	}));
+
+	context.subscriptions.push(vscode.commands.registerCommand(Commands.NEW_LIFERAY_MODULE, async () => {
+		createLiferayModuleProject(context);
 	}));
 
 	// console.log(bladeJarPath);

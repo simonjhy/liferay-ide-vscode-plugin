@@ -3,7 +3,7 @@ import { ProjectStepInput } from './baseProjectWizard';
 import { spawnSync } from 'child_process';
 import { findJavaHomes, JavaRuntime } from '../java-runtime/findJavaHomes';
 import Constants from '../constants';
-import { downloadFile, getJavaExecutable, openCurrentLiferayWorkspaceProject, ProductInfo } from '../utils';
+import { downloadFile, getJavaExecutable, openCurrentLiferayWorkspaceProject, ProductInfo } from '../liferayUtils';
 import * as fs from 'fs';
 import path = require('path');
 

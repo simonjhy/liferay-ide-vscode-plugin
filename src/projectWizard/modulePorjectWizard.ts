@@ -8,7 +8,7 @@ import { ProjectStepInput } from './baseProjectWizard';
 import { spawnSync } from 'child_process';
 import { findJavaHomes, JavaRuntime } from '../java-runtime/findJavaHomes';
 import Constants from '../constants';
-import { downloadFile } from '../utils';
+import { downloadFile } from '../liferayUtils';
 
 export async function createLiferayModuleProject(context: ExtensionContext) {
 
@@ -31,9 +31,9 @@ export async function createLiferayModuleProject(context: ExtensionContext) {
 		runtime: QuickPickItem;
 	}
 
-	async function collectInputs() {
+	async function createLiferayModule() {
 		const state = {} as Partial<State>;
-		await ProjectStepInput.run(input => inputName(input, state));
+		await ProjectStepInput.run(input => setLifreayModuleProjectName(input, state));
 		return state as State;
 	}
 
@@ -115,18 +115,16 @@ export async function createLiferayModuleProject(context: ExtensionContext) {
 			validate: validateNameIsUnique,
 			shouldResume: shouldResume
 		});
-		return (input: ProjectStepInput) => inputName(input, state);
+		return (input: ProjectStepInput) => setLifreayModuleProjectName(input, state);
 	}
 
-	async function inputName(input: ProjectStepInput, state: Partial<State>) {
-		const additionalSteps = typeof state.workspaceProduct === 'string' ? 1 : 0;
-		// TODO: Remember current value when navigating back.
+	async function setLifreayModuleProjectName(input: ProjectStepInput, state: Partial<State>) {
 		state.name = await input.showInputBox({
 			title,
-			step: 2 + additionalSteps,
-			totalSteps: 3 + additionalSteps,
+			step: 2,
+			totalSteps: 3,
 			value: state.name || '',
-			prompt: 'Choose a unique name for liferay gradle workspace project',
+			prompt: 'Choose a unique name for liferay module project',
 			validate: validateNameIsUnique,
 			shouldResume: shouldResume
 		});
@@ -176,7 +174,7 @@ export async function createLiferayModuleProject(context: ExtensionContext) {
 
 
 
-	const state = await collectInputs();
+	const state = await createLiferayModule();
 	window.showInformationMessage(`Creating Application Service '${state.name}'`);
 	
 	const version =state.workspaceProduct as QuickPickItem;
