@@ -176,3 +176,46 @@ export async function downloadFile(url: string, cacheDirName: string, fileName: 
 		openWorkspaceFolder(workspacePath);
     }
   }
+
+export function findDirectoriesContaining(dir: string, filterDir: string): string[] {
+	let results: string[] = [];
+  
+	const files = fs.readdirSync(dir);
+  
+	files.forEach((file) => {
+	  const filePath = path.join(dir, file);
+	  const stat = fs.statSync(filePath);
+  
+	  if (stat.isDirectory()) {
+		const dirName = path.basename(filePath);
+		if (dirName.includes(filterDir)) {
+		  results.push(filePath);
+		} else {
+		  results = results.concat(findDirectoriesContaining(filePath,filterDir ));
+		}
+	  }
+	});
+  
+	return results;
+  }
+	
+
+  export interface WorkspaceFolderMatch {
+	folder: vscode.WorkspaceFolder;
+	match: boolean;
+  }
+  
+  export function findMatchingWorkspaceFolder(pattern: string): WorkspaceFolderMatch | undefined {
+	const workspaceFolders = vscode.workspace.workspaceFolders;
+	if (!workspaceFolders) {
+	  return undefined;
+	}
+	for (const folder of workspaceFolders) {
+	  const folderPath = folder.uri.fsPath;
+	  const folderName = folderPath.slice(folderPath.lastIndexOf('/') + 1);
+	  if (folderName === pattern) {
+		return { folder, match: true };
+	  }
+	}
+	return { folder: workspaceFolders[0], match: false };
+  }

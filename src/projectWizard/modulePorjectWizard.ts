@@ -8,7 +8,8 @@ import { ProjectStepInput } from './baseProjectWizard';
 import { spawnSync } from 'child_process';
 import { findJavaHomes, JavaRuntime } from '../java-runtime/findJavaHomes';
 import Constants from '../constants';
-import { downloadFile } from '../liferayUtils';
+import { downloadFile, findDirectoriesContaining, findMatchingWorkspaceFolder, getJavaExecutable } from '../liferayUtils';
+import * as vscode from 'vscode';
 
 export async function createLiferayModuleProject(context: ExtensionContext) {
 
@@ -21,14 +22,26 @@ export async function createLiferayModuleProject(context: ExtensionContext) {
 		light: Uri.file(context.asAbsolutePath('resources/light/add.svg')),
 	}, 'Create Resource Group');
 
+	async function inputResourceGroupName(input: ProjectStepInput, state: Partial<State>) {
+		state.moduleType = await input.showInputBox({
+			title,
+			step: 2,
+			totalSteps: 4,
+			value: typeof state.moduleType === 'string' ? state.moduleType : '',
+			prompt: 'Choose a unique name for the resource groupqqqqqqqqqqqqqqqqqq',
+			validate: validateNameIsUnique,
+			shouldResume: shouldResume
+		});
+		return (input: ProjectStepInput) => setLifreayModulePackageName(input, state);
+	}
 
 	interface State {
 		title: string;
 		step: number;
 		totalSteps: number;
-		workspaceProduct: QuickPickItem | string;
+		moduleType: QuickPickItem | string;
 		name: string;
-		runtime: QuickPickItem;
+		packageName: string;
 	}
 
 	async function createLiferayModule() {
@@ -37,118 +50,70 @@ export async function createLiferayModuleProject(context: ExtensionContext) {
 		return state as State;
 	}
 
-	const title = 'Create Liferay Gradle Workspace Project';
+	const title = 'Create Liferay Moudule Project';
 
-	async function pickWorkspaceProduct(input: ProjectStepInput, state: Partial<State>) {
-		const loadingItems: QuickPickItem[] = [{ label: 'Loading.....', description: 'Wait to load workspace product versions' }];
+	async function setLiferayModuleType(input: ProjectStepInput, state: Partial<State>) {
+		const loadingItems: QuickPickItem[] = [{ label: 'Loading.....', description: 'Wait to load liferay module types' }];
 		const pick = await input.showQuickPick({
 			title,
-			step: 1,
+			step: 2,
 			totalSteps: 3,
-			placeholder: 'Choose a prodcut version:',
+			placeholder: 'Choose a liferay module type:',
 			items: loadingItems,
-			activeItem: typeof state.workspaceProduct !== 'string' ? state.workspaceProduct : undefined,
+			activeItem: typeof state.moduleType !== 'string' ? state.moduleType : undefined,
 			buttons: [],
 			shouldResume: shouldResume,
-			initQuickItems: getAvailableProductVersions
+			initQuickItems: getAvailableModuleTypes
 		});
 		console.log("Choose is [" + state.name + "]");
 		if (pick instanceof MyButton) {
 			return (input: ProjectStepInput) => inputResourceGroupName(input, state);
 		}
-		state.workspaceProduct = pick;
-		return (input: ProjectStepInput) => pickRuntime(input, state);
-	}
-
-
-	async function getAvailableProductVersions(): Promise<QuickPickItem[]> {
-		const bladeJarPath = await downloadFile(Constants.BLADE_DOWNLOAD_URL, Constants.BLADE_CACHE_DIR,"blade.jar");
-
-		let productVersions: string[] = [];
-
-		// execFile('C:\\java\\zulu\\11\\bin\\java', ['-jar', bladeJarPath, 'init', '--list'], (_error, _stdout) =>{
-		// 	//console.log("Call java process output ["  + _stdout + "]");
-		// 	productVersions =  _stdout.split('\n');
-		// 	console.log("Call java process output ["  + productVersions + "]");
-		// 	return productVersions.map(label => ({ label }));
-		// 	//return outputArray.map(label => ({ label }));
-		// });
-		let javahome : JavaRuntime[] = await findJavaHomes();
-
-		const result  = spawnSync(javahome[0].home + '/bin/java', ['-jar', bladeJarPath, 'init', '--list'], { encoding: 'utf-8' });
-
-		if (result.status !== 0) {
-			console.error(result.stderr);
-		  }
-
-		productVersions =  result.stdout.split('\n');
-
-		return productVersions.map(label => ({ label }));
+		state.moduleType = pick;
+		return (input: ProjectStepInput) => setLifreayModulePackageName(input, state);
 	}
 
 	async function getAvailableModuleTypes(): Promise<QuickPickItem[]> {
 		const bladeJarPath = await downloadFile(Constants.BLADE_DOWNLOAD_URL, Constants.BLADE_CACHE_DIR,"blade.jar");
 
-		let productVersions: string[] = [];
+		let moduleTypes: string[] = [];
 
 		let javahome : JavaRuntime[] = await findJavaHomes();
-		const result  = spawnSync(javahome[0].home + '/bin/java', ['-jar', bladeJarPath, 'create', '-l'], { encoding: 'utf-8' });
+		const result  = spawnSync(getJavaExecutable(javahome[0]), ['-jar', bladeJarPath, 'create', '-l'], { encoding: 'utf-8' });
 
 		if (result.status !== 0) {
 			console.error(result.stderr);
 		}
 
-		productVersions =  result.stdout.split('\n');
+		moduleTypes =  result.stdout.split('\n');
 
-		return productVersions.map(label => ({ label }));
-	}
-
-
-
-	async function inputResourceGroupName(input: ProjectStepInput, state: Partial<State>) {
-		state.workspaceProduct = await input.showInputBox({
-			title,
-			step: 2,
-			totalSteps: 4,
-			value: typeof state.workspaceProduct === 'string' ? state.workspaceProduct : '',
-			prompt: 'Choose a unique name for the resource group',
-			validate: validateNameIsUnique,
-			shouldResume: shouldResume
-		});
-		return (input: ProjectStepInput) => setLifreayModuleProjectName(input, state);
+		return moduleTypes.map(label => ({ label }));
 	}
 
 	async function setLifreayModuleProjectName(input: ProjectStepInput, state: Partial<State>) {
 		state.name = await input.showInputBox({
 			title,
-			step: 2,
+			step: 1,
 			totalSteps: 3,
 			value: state.name || '',
 			prompt: 'Choose a unique name for liferay module project',
 			validate: validateNameIsUnique,
 			shouldResume: shouldResume
 		});
-		return (input: ProjectStepInput) => pickWorkspaceProduct(input, state);
+		return (input: ProjectStepInput) => setLiferayModuleType(input, state);
 	}
 
 
-	async function pickRuntime(input: ProjectStepInput, state: Partial<State>) {
-		const additionalSteps = typeof state.workspaceProduct === 'string' ? 1 : 0;
-		// const runtimes = await getAvailableRuntimes();
-		const runtimes: QuickPickItem[]= [];
-		// TODO: Remember currently active item when navigating back.
-		state.runtime = await input.showQuickPick({
+	async function setLifreayModulePackageName(input: ProjectStepInput, state: Partial<State>) {
+		state.packageName = await input.showInputBox({
 			title,
-			step: 3 + additionalSteps,
-			totalSteps: 3 + additionalSteps,
-			placeholder: 'Choose a Liferay module type:',
-			items: runtimes,
-			activeItem: state.runtime,
-			shouldResume: shouldResume,
-			initQuickItems: getAvailableModuleTypes
+			step: 3,
+			totalSteps: 3,
+			value: state.packageName || '',
+			prompt: 'Choose a package name for liferay module project',
+			validate: validateNameIsUnique,
+			shouldResume: shouldResume
 		});
-
-		console.log("when show moudle type, the product version choose is [" + state.name + "]");
 	}
 
 	function shouldResume() {
@@ -159,28 +124,30 @@ export async function createLiferayModuleProject(context: ExtensionContext) {
 	}
 
 	async function validateNameIsUnique(name: string) {
-		// ...validate...
-		await new Promise(resolve => setTimeout(resolve, 1000));
-		return name === 'vscode' ? 'Name not unique' : undefined;
+		const result = findMatchingWorkspaceFolder(name);
+		if (result && result.match) {
+			return 'Name not unique';
+		}
+		return undefined;
 	}
 
-	//async function getAvailableRuntimes(_resourceGroup: QuickPickItem | string, _token?: CancellationToken): Promise<QuickPickItem[]> 
-	async function getAvailableRuntimes(): Promise<QuickPickItem[]> {
-		// ...retrieve...
-		await new Promise(resolve => setTimeout(resolve, 1000));
-		return ['Node 8.9', 'Node 6.11', 'Node 4.5']
-			.map(label => ({ label }));
+	async function bladeCreateModuleProject(): Promise<void> {
+		const bladeJarPath = await downloadFile(Constants.BLADE_DOWNLOAD_URL, Constants.BLADE_CACHE_DIR, Constants.BALDE_JAR_NAME);
+		let javahome : JavaRuntime[] = await findJavaHomes();
+
+		let moduleType = state.moduleType as QuickPickItem;
+
+		const result  = spawnSync(getJavaExecutable(javahome[0]), ['-jar', bladeJarPath, 'create', '-t', moduleType.label, '-b', workspaceType.toLocaleLowerCase(), '--base', path.resolve(state.path), state.name], { encoding: 'utf-8' });
+
+		if (result.status !== 0) {
+			throw new Error(`Failed to init a ${workspaceType} liferay worksapce project in ${state.path}`);
+		}
+
+		openCurrentLiferayWorkspaceProject(path.join(path.resolve(state.path), state.name));
 	}
-
-
 
 	const state = await createLiferayModule();
+
 	window.showInformationMessage(`Creating Application Service '${state.name}'`);
 	
-	const version =state.workspaceProduct as QuickPickItem;
-	const moduleType = state.runtime as QuickPickItem;
-
-	console.log("product version is " + version.label);
-	console.log("runtime version is " + moduleType.label);
-
 }

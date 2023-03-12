@@ -37,21 +37,6 @@ export function activate(context: vscode.ExtensionContext) {
 	context.subscriptions.push(vscode.commands.registerCommand(Commands.NEW_LIFERAY_MODULE, async () => {
 		createLiferayModuleProject(context);
 	}));
-
-	// console.log(bladeJarPath);
-
-	// let productVersions: string[] = [];
-	// const jarProcess = spawn('C:\\java\\zulu\\11\\bin\\java', ['-jar', bladeJarPath, "init", "--list"]);
-	// console.log("Call java process "  + jarProcess.exitCode);
-
-	// const result = execSync('C:/java/zulu/11/bin/java -jar ' + bladeJarPath + ' init --list');
-
-	// execFile('C:\\java\\zulu\\11\\bin\\java', ['-jar', bladeJarPath, 'init', '--list'], (_error, _stdout) =>{
-	// 	console.log("Call java process output ["  + _stdout + "]");
-	// });
-	// console.log("Call java process output ["  + result + "]");
-
-	//context.subscriptions.push(disposable);
 }
 
 
