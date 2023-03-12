@@ -8,8 +8,9 @@ import { ProjectStepInput } from './baseProjectWizard';
 import { spawnSync } from 'child_process';
 import { findJavaHomes, JavaRuntime } from '../java-runtime/findJavaHomes';
 import Constants from '../constants';
-import { downloadFile, findDirectoriesContaining, findMatchingWorkspaceFolder, getJavaExecutable } from '../liferayUtils';
+import { downloadFile, findDirectoriesContaining, findMatchingWorkspaceFolder, getCurrentWorkspacePath, getJavaExecutable, refreshWorkspaceView } from '../liferayUtils';
 import * as vscode from 'vscode';
+import path = require('path');
 
 export async function createLiferayModuleProject(context: ExtensionContext) {
 
@@ -137,17 +138,32 @@ export async function createLiferayModuleProject(context: ExtensionContext) {
 
 		let moduleType = state.moduleType as QuickPickItem;
 
-		const result  = spawnSync(getJavaExecutable(javahome[0]), ['-jar', bladeJarPath, 'create', '-t', moduleType.label, '-b', workspaceType.toLocaleLowerCase(), '--base', path.resolve(state.path), state.name], { encoding: 'utf-8' });
+		let moduleTypeString = moduleType.label;
 
-		if (result.status !== 0) {
-			throw new Error(`Failed to init a ${workspaceType} liferay worksapce project in ${state.path}`);
+		const index = moduleTypeString.indexOf(" ");
+
+		const type = moduleTypeString.substring(0, index);
+
+		console.log("module type is " + type);
+
+		let currentLiferayWorkspacePorjectPath = getCurrentWorkspacePath();
+
+		if (!currentLiferayWorkspacePorjectPath || currentLiferayWorkspacePorjectPath === undefined){
+			throw new Error(`Failed to create Liferay Module Project.`);
 		}
 
-		openCurrentLiferayWorkspaceProject(path.join(path.resolve(state.path), state.name));
+		const result  = spawnSync(getJavaExecutable(javahome[0]), ['-jar', bladeJarPath, 'create', '-t', type, '--base', currentLiferayWorkspacePorjectPath, '-p', state.packageName, state.name], { encoding: 'utf-8' });
+
+		if (result.status !== 0) {
+			throw new Error(`Failed to create a ${type} liferay worksapce project for ${state.name}`);
+		}
+
+		refreshWorkspaceView();
 	}
 
 	const state = await createLiferayModule();
 
+	bladeCreateModuleProject();
+
 	window.showInformationMessage(`Creating Application Service '${state.name}'`);
-	
 }

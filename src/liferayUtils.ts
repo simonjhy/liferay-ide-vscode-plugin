@@ -177,6 +177,20 @@ export async function downloadFile(url: string, cacheDirName: string, fileName: 
     }
   }
 
+
+export async function addFolderToWorkspace(folderPath: string): Promise<void> {
+    const workspaceFolders = vscode.workspace.workspaceFolders;
+    if (workspaceFolders) {
+        const folderUri = vscode.Uri.file(folderPath);
+        vscode.workspace.updateWorkspaceFolders(workspaceFolders.length, 0, { uri: folderUri });
+    }
+}
+
+export async function refreshWorkspaceView(): Promise<void> {
+    vscode.commands.executeCommand('workbench.files.action.refreshFilesExplorer');
+}
+
+
 export function findDirectoriesContaining(dir: string, filterDir: string): string[] {
 	let results: string[] = [];
   
@@ -219,3 +233,12 @@ export function findDirectoriesContaining(dir: string, filterDir: string): strin
 	}
 	return { folder: workspaceFolders[0], match: false };
   }
+
+  export function getCurrentWorkspacePath(): string | undefined {
+    const workspaceFolders = vscode.workspace.workspaceFolders;
+    if (!workspaceFolders || workspaceFolders.length === 0) {
+        return undefined;
+    }
+    const workspaceFolder = workspaceFolders[0];
+    return workspaceFolder.uri.fsPath;
+}
