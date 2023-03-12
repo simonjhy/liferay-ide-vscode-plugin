@@ -83,7 +83,7 @@ export async function initLiferayWorkpsceProject(context: ExtensionContext, work
 
 		let javahome : JavaRuntime[] = await findJavaHomes();
 
-		const result  = spawnSync(javahome[0].home + '/bin/java', ['-jar', bladeJarPath, 'init', '--list'], { encoding: 'utf-8' });
+		const result  = spawnSync(getJavaExecutable(javahome[0]), ['-jar', bladeJarPath, 'init', '--list'], { encoding: 'utf-8' });
 
 		productVersions =  result.stdout.split('\n');
 
