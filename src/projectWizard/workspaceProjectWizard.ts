@@ -216,7 +216,7 @@ export async function initLiferayWorkpsceProject(context: ExtensionContext, work
 
 	const state = await initLiferayWorkspace();
 
-	window.showInformationMessage(`Creating Application Service '${state.name}'`);
+	window.showInformationMessage(`Creating Application Service '${state.name}' in '${state.path}'`);
 
 	bladeInitWorkspace();
 }
