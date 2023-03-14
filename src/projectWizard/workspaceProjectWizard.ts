@@ -1,4 +1,4 @@
-import { QuickPickItem, window, QuickInputButton, ExtensionContext, Uri } from 'vscode';
+import { QuickPickItem, window, QuickInputButton, ExtensionContext, Uri, ThemeIcon } from 'vscode';
 import { ProjectStepInput } from './baseProjectWizard';
 import { spawnSync } from 'child_process';
 import { findJavaHomes, JavaRuntime } from '../java-runtime/findJavaHomes';
@@ -6,6 +6,8 @@ import Constants from '../constants';
 import { downloadFile, getJavaExecutable, openCurrentLiferayWorkspaceProject, ProductInfo } from '../liferayUtils';
 import * as fs from 'fs';
 import path = require('path');
+import * as vscode from 'vscode';
+
 
 export async function initLiferayWorkpsceProject(context: ExtensionContext, workspaceType: string) {
 
@@ -39,6 +41,13 @@ export async function initLiferayWorkpsceProject(context: ExtensionContext, work
 
 	async function setWorkspaceProduct(input: ProjectStepInput, state: Partial<State>) {
 		
+
+		const showAllButton = new MyButton({
+			dark: Uri.file(context.asAbsolutePath('resources/dark/star.svg')),
+			light: Uri.file(context.asAbsolutePath('resources/light/star.svg')),
+		}, 'Create Resource Group');
+
+
 		const loadingItems: QuickPickItem[] = [{ label: 'Loading.....', description: 'Wait to load workspace product versions' }];
 		const pick = await input.showQuickPick({
 			title,
@@ -47,7 +56,7 @@ export async function initLiferayWorkpsceProject(context: ExtensionContext, work
 			placeholder: 'Please choose a prodcut version:',
 			items: loadingItems,
 			activeItem: typeof state.workspaceProduct !== 'string' ? state.workspaceProduct : undefined,
-			buttons: [],
+			buttons: [showAllButton],
 			shouldResume: shouldResume,
 			initQuickItems: getAvailableProductVersions
 		});
@@ -57,8 +66,10 @@ export async function initLiferayWorkpsceProject(context: ExtensionContext, work
 		state.workspaceProduct = pick;
 	}
 
+	
 	async function setWorkspaceTargetPlatform(input: ProjectStepInput, state: Partial<State>) {
 		const loadingItems: QuickPickItem[] = [{ label: 'Loading.....', description: 'Wait to load workspace target platform versions' }];
+
 		const pick = await input.showQuickPick({
 			title,
 			step: 3,
