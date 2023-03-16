@@ -3,7 +3,7 @@ import { ProjectStepInput } from './baseProjectWizard';
 import { spawnSync } from 'child_process';
 import { findJavaHomes, JavaRuntime } from '../java-runtime/findJavaHomes';
 import Constants from '../constants';
-import { downloadFile, getJavaExecutable, openCurrentLiferayWorkspaceProject, ProductInfo } from '../liferayUtils';
+import { downloadFile, getBladeJar, getJavaExecutable, getProductInfos, openCurrentLiferayWorkspaceProject, ProductInfo } from '../liferayUtils';
 import * as fs from 'fs';
 import path = require('path');
 import * as vscode from 'vscode';
@@ -88,7 +88,7 @@ export async function initLiferayWorkpsceProject(context: ExtensionContext, work
 	}
 
 	async function getAvailableTargetPlatformVersions(): Promise<QuickPickItem[]> {
-		const bladeJarPath = await downloadFile(Constants.BLADE_DOWNLOAD_URL, Constants.BLADE_CACHE_DIR, Constants.BALDE_JAR_NAME);
+		const bladeJarPath = await getBladeJar();
 		
 		let productVersions: string[] = [];
 
@@ -98,20 +98,7 @@ export async function initLiferayWorkpsceProject(context: ExtensionContext, work
 
 		productVersions =  result.stdout.split('\n');
 
-		const productInfoPath = await downloadFile(Constants.PRODUCT_INFO_DOWNLOAD_URL, Constants.PRODUCT_INFO_CACHE_DIR, Constants.PRODUCT_INFO_NAME);
-
-		const jsonString = fs.readFileSync(productInfoPath, 'utf-8');
-
-		const productInfoMap = new Map<string, ProductInfo>();
-
-		const jsonObject = JSON.parse(jsonString);
-
-		for (const key in jsonObject) {
-			if (Object.prototype.hasOwnProperty.call(jsonObject, key)) {
-			  const productInfo = jsonObject[key] as ProductInfo;
-			  productInfoMap.set(key, productInfo);
-			}
-		}
+		const productInfoMap = await getProductInfos();
 
 		let taretPlatformVersions: string[] = [];
 
@@ -128,7 +115,7 @@ export async function initLiferayWorkpsceProject(context: ExtensionContext, work
 
 
 	async function getAvailableProductVersions(): Promise<QuickPickItem[]> {
-		const bladeJarPath = await downloadFile(Constants.BLADE_DOWNLOAD_URL, Constants.BLADE_CACHE_DIR, Constants.BALDE_JAR_NAME);
+		const bladeJarPath = await getBladeJar();
 
 		let productVersions: string[] = [];
 

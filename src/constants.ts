@@ -33,6 +33,18 @@ namespace Constants {
     export const BALDE_JAR_NAME = 'blade.jar'; 
 
     export const PRODUCT_INFO_DOWNLOAD_URL = 'https://releases.liferay.com/tools/workspace/.product_info.json';
+
+    export const LXC_DOWNLOAD_URL = 'https://github.com/ipeychev/lxc-cli-release/releases/download/0.0.6/';
+	
+    export const GRADLE_PROPERTIES_FILE_NAME = "gradle.properties";
+
+	export const SETTINGS_GRADLE_FILE_NAME = "settings.gradle";
+
+    export const LIFERAY_WORKSPACE_PRODUCT = "liferay.workspace.product";
+
+    export const BASE_BOM_URL = "https://repository.liferay.com/nexus/content/groups/public/com/liferay/portal/";
+
+    export const CLIENT_EXTENSION_CACHE_DIR = '.liferay/client-extension'; 
 }
 
 export default Constants;
