@@ -8,7 +8,7 @@ import { ProjectStepInput } from './baseProjectWizard';
 import { spawnSync } from 'child_process';
 import { findJavaHomes, JavaRuntime } from '../java-runtime/findJavaHomes';
 import Constants from '../constants';
-import { downloadFile, findDirectoriesContaining, findMatchingWorkspaceFolder, findTagsWithCssSelector, findTagsWithXpath, getCurrentWorkspacePath, getJavaExecutable, getProductInfos, refreshWorkspaceView } from '../liferayUtils';
+import { downloadFile, findDirectoriesContaining, findMatchingWorkspaceFolder,  getCurrentWorkspacePath, getJavaExecutable, getProductInfos, refreshWorkspaceView } from '../liferayUtils';
 import * as vscode from 'vscode';
 import path = require('path');
 import { isLiferayGradleWorkspace } from '../workspaceUtil';
@@ -20,7 +20,6 @@ import { Hash } from 'crypto';
 import { createHash } from 'crypto';
 import { createReadStream } from 'fs';
 import { promisify } from 'util';
-import PropertiesReader = require('properties-reader');
 
 export async function createLiferayClientExtensionProject(context: ExtensionContext) {
 
@@ -87,13 +86,13 @@ export async function createLiferayClientExtensionProject(context: ExtensionCont
 			if (isLiferayGradleWorkspace(workspacePath)){
 				const gradlePropertiesPath = path.join(workspacePath, "gradle.properties");
 				
-				const gradleProperties = PropertiesReader(gradlePropertiesPath);
+				//const gradleProperties = PropertiesReader(gradlePropertiesPath);
 
-				workspaceProuct = gradleProperties.get(Constants.LIFERAY_WORKSPACE_PRODUCT) as string;
+				//workspaceProuct = gradleProperties.get(Constants.LIFERAY_WORKSPACE_PRODUCT) as string;
 			}
 		}
 
-		return workspaceProuct;
+		return "dxp-7.4-u66";
 	}
 
 	async function createSha256(file: string): Promise<string> {
@@ -201,11 +200,11 @@ export async function createLiferayClientExtensionProject(context: ExtensionCont
 
         const releaseBomPath = await downloadFile(releaseBomFileUrl, Constants.CLIENT_EXTENSION_CACHE_DIR, "release." + productType + ".bom-" + targetPlatformVersion + ".pom");
 
-		const clientExtensionApiJarVersionElement = findTagsWithCssSelector(releaseBomPath, "//artifactId[text()='com.liferay.client.extension.type.api']/parent::*");
+		//const clientExtensionApiJarVersionElement = findTagsWithCssSelector(releaseBomPath, "//artifactId[text()='com.liferay.client.extension.type.api']/parent::*");
 
 		//const clientExtensionApiJarVersion = findTagsWithCssSelector(releaseBomPath, "artifactId:contains(com.liferay.client.extension.type.api");
 
-		console.log("clientExtensionApiJarVersion is " + clientExtensionApiJarVersionElement);
+		//console.log("clientExtensionApiJarVersion is " + clientExtensionApiJarVersionElement);
 
 		// const clientExtensionApiJarDownloaUrl = "https://repository-cdn.liferay.com/nexus/service/local/repositories/liferay-public-releases" +
 		// "/content/com/liferay/com.liferay.client.extension.type.api/" + clientExtensionApiJarVersion +

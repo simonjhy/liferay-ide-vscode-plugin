@@ -15,58 +15,33 @@ import * as crypto from 'crypto';
 import { Hash } from 'crypto';
 import * as util from "util";
 import { ExtensionApi as GradleApi, RunTaskOpts, Output } from "vscode-gradle";
-import * as xpath from 'xpath';
-import * as xmldom from 'xmldom';
-import { SelectedValue } from 'xpath';
-import * as xmlParser from 'xml-js';
+//import * as xmlParser from 'xml-js';
 import * as jsonpath from 'jsonpath';
 
 
-	function findParentElements(json: any, selector: string): any[] {
-		// 使用 jsonpath.query 方法查找所有符合条件的元素
-		const elements = jsonpath.query(json, selector);
+	// function findParentElements(json: any, selector: string): any[] {
+	// 	// 使用 jsonpath.query 方法查找所有符合条件的元素
+	// 	const elements = jsonpath.query(json, selector);
 
-		// 返回所有符合条件的元素的父元素
-		return elements.map((element: any) => {
-			return element.parent;
-		});
-	}
+	// 	// 返回所有符合条件的元素的父元素
+	// 	return elements.map((element: any) => {
+	// 		return element.parent;
+	// 	});
+	// }
 
-	export function findTagsWithCssSelector(filePath: string, cssSelector: string):  any[] {
-		const xml = fs.readFileSync(filePath, 'utf8');
+	// export function findTagsWithCssSelector(filePath: string, cssSelector: string):  any[] {
+	// 	const xml = fs.readFileSync(filePath, 'utf8');
 
-		// 将 XML 解析为 JSON 对象
-		const json = xmlParser.xml2json(xml, { compact: true });
+	// 	// 将 XML 解析为 JSON 对象
+	// 	const json = xmlParser.xml2json(xml, { compact: true });
 
-		// 从 JSON 中查找所有符合条件的元素的父元素
-		const artifactId = 'com.liferay.client.extension.type.api';
-		const parentElements = findParentElements(json, `dependency > artifactId[text="${artifactId}"]`);
+	// 	// 从 JSON 中查找所有符合条件的元素的父元素
+	// 	const artifactId = 'com.liferay.client.extension.type.api';
+	// 	const parentElements = findParentElements(json, `dependency > artifactId[text="${artifactId}"]`);
 
-		console.log(parentElements); // 输出所有符合条件的父元素		
-		return parentElements;
-  	}
-
-	  export function findTagsWithXpath(filePath: string, xpathTag: string): SelectedValue[] {
-		// 读取 XML 文件
-		const xml = fs.readFileSync(filePath, 'utf8');
-
-		// 将 XML 解析为 DOM 对象
-		const doc = new xmldom.DOMParser().parseFromString(xml);
-
-		// 使用 XPath 获取指定元素
-		const clientExtensionApiJarVersionElement = xpath.select(xpathTag,doc);
-
-		// for (const element of clientExtensionApiJarVersionElement) {
-		// 	// 获取子元素的值
-		// 	const value = xpath.select('string(../version)', element);
-		  
-		// 	console.log(`artifactId: ${element.textContent}, version: ${value}`);
-		// }
-
-		console.log("clientExtensionApiJarVersionElement size is " + clientExtensionApiJarVersionElement.length);
-
-		return clientExtensionApiJarVersionElement;
-  	}
+	// 	console.log(parentElements); // 输出所有符合条件的父元素		
+	// 	return parentElements;
+  	// }
 
 	export function getJavaConfiguration(): WorkspaceConfiguration {
 		return workspace.getConfiguration('java');
