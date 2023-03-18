@@ -45,6 +45,8 @@ namespace Constants {
     export const BASE_BOM_URL = "https://repository.liferay.com/nexus/content/groups/public/com/liferay/portal/";
 
     export const CLIENT_EXTENSION_CACHE_DIR = '.liferay/client-extension'; 
+
+    export const BASE_RELEASE_URL = "https://repository-cdn.liferay.com/nexus/service/local/repositories/liferay-public-releases";
 }
 
 export default Constants;

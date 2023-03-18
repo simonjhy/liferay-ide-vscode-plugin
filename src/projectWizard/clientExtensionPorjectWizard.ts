@@ -3,23 +3,21 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { QuickPickItem, window, QuickInputButton, ExtensionContext, Uri, ProgressLocation, workspace } from 'vscode';
+import { QuickPickItem, window, QuickInputButton, ExtensionContext, Uri } from 'vscode';
 import { ProjectStepInput } from './baseProjectWizard';
-import { spawnSync } from 'child_process';
+import { exec, execFile, spawn, spawnSync } from 'child_process';
 import { findJavaHomes, JavaRuntime } from '../java-runtime/findJavaHomes';
 import Constants from '../constants';
-import { downloadFile, findDirectoriesContaining, findMatchingWorkspaceFolder,  getCurrentWorkspacePath, getJavaExecutable, getProductInfos, refreshWorkspaceView } from '../liferayUtils';
-import * as vscode from 'vscode';
+import { downloadFile, findMatchingWorkspaceFolder,  findTagsWithCssSelector,  getCurrentWorkspacePath, getJavaExecutable, getProductInfos, refreshWorkspaceView } from '../liferayUtils';
 import path = require('path');
 import { isLiferayGradleWorkspace } from '../workspaceUtil';
-import * as xml2js from "xml2js";
 import * as fs from 'fs';
-import * as cheerio from "cheerio";
-import * as crypto from 'crypto';
-import { Hash } from 'crypto';
 import { createHash } from 'crypto';
 import { createReadStream } from 'fs';
-import { promisify } from 'util';
+import * as properties from "properties-parser";
+import * as os from 'os';
+import * as zlib from 'zlib';
+import * as tar from 'tar';
 
 export async function createLiferayClientExtensionProject(context: ExtensionContext) {
 
@@ -55,7 +53,7 @@ export async function createLiferayClientExtensionProject(context: ExtensionCont
 			title,
 			step: 2,
 			totalSteps: 3,
-			placeholder: 'Choose a liferay client extenstion type:',
+			placeholder: 'Choose a Liferay Client Extenstion Type:',
 			items: loadingItems,
 			activeItem: typeof state.extensionType !== 'string' ? state.extensionType : undefined,
 			buttons: [],
@@ -67,32 +65,47 @@ export async function createLiferayClientExtensionProject(context: ExtensionCont
 	}
 
 	async function getExtensionMetadataFile(): Promise<string>{
-
-
 		return "";
 	}
 
-	function getWorkspaceProduct():string{
+	async function upzip(zipPath: string, output: string){
+		if (!fs.existsSync(output)) {
+			fs.mkdirSync(output);
+		}
+
+		const unzip = zlib.createUnzip();
+		const untar = tar.extract({
+			cwd: output, 
+		});
+
+		const readStream = fs.createReadStream(zipPath);
+
+		readStream.pipe(unzip)
+			.pipe(untar)
+			.on('error', (err) => {
+				console.error('Failed unzip：', err);
+			})
+			.on('close', () => {
+				console.log('Finish unzip.');
+		});
+	}
+
+	function getWorkspaceProduct():any{
 		const workspacePath = getCurrentWorkspacePath();
-		console.log("workspacePath-1 is " + workspacePath);
+
 		if (!workspacePath){
 			throw new Error("Failed to get current workspace project path");
 		}
 
-		let workspaceProuct: string = "";		
-
 		if (workspacePath){
-			console.log("workspacePath-2 is " + workspacePath);
 			if (isLiferayGradleWorkspace(workspacePath)){
 				const gradlePropertiesPath = path.join(workspacePath, "gradle.properties");
-				
-				//const gradleProperties = PropertiesReader(gradlePropertiesPath);
-
-				//workspaceProuct = gradleProperties.get(Constants.LIFERAY_WORKSPACE_PRODUCT) as string;
+				const props = properties.read(gradlePropertiesPath);
+				return props[Constants.LIFERAY_WORKSPACE_PRODUCT];
 			}
 		}
 
-		return "dxp-7.4-u66";
+		return null;
 	}
 
 	async function createSha256(file: string): Promise<string> {
@@ -112,17 +125,35 @@ export async function createLiferayClientExtensionProject(context: ExtensionCont
 	  });
 	}
 
-
 	async function getLxc(): Promise<string> {
-		const lxcUrl = Constants.LXC_DOWNLOAD_URL;
+		const lxcCacheDir = path.join(os.homedir(), Constants.CLIENT_EXTENSION_CACHE_DIR);
+
+		const lxcUnzipPath = path.join(lxcCacheDir, "lxc");
+		let  lxcFilePath = path.join(lxcUnzipPath, 'lxc');
 
 		const archType = process.platform;
+		switch (archType) {
+			case 'win32':
+				lxcFilePath = lxcFilePath.concat('.exe');
+				break;
+			break;
+			case 'linux':
+			case 'darwin':
+			break;
+			default:
+		}
+
+		if (fs.existsSync(lxcFilePath)){
+			return lxcFilePath;
+		}
+
+		const lxcUrl = Constants.LXC_DOWNLOAD_URL;
 
 		let lxcName: string;
 
 		switch (archType) {
 			case 'win32':
-				lxcName = "/lxc-win";
+				lxcName = "lxc-win";
 			break;
 			case 'linux':
 				lxcName = "lxc-linux";
@@ -133,59 +164,84 @@ export async function createLiferayClientExtensionProject(context: ExtensionCont
 			default:
 			throw new Error("Your platform is not supported.");
 		}
+
 		
+		const lxcZipPath = path.join(lxcCacheDir, lxcName).concat(".tgz");
+		const lxcZipChecksumPath = path.join(lxcCacheDir, lxcName).concat(".tgz").concat(".checksum")
+
+		if (fs.existsSync(lxcZipPath) && fs.existsSync(lxcZipChecksumPath)){
+			const sha256 = await createSha256(lxcZipPath);
+
+			const lxcChecksum = fs.readFileSync(lxcZipChecksumPath, 'utf-8');
+
+			if (sha256 === lxcChecksum.toString()){
+				upzip(lxcZipPath, path.join(lxcCacheDir, "lxc") );
+				return lxcFilePath;
+			}
+
+			fs.unlink(lxcZipPath, (err) => {
+				if (err) {
+				  console.error(err);
+				}
+			});
+			fs.unlink(lxcZipChecksumPath, (err) => {
+				if (err) {
+				  console.error(err);
+				}
+			});
+		}
+
 		const lxcDownloadUrl = lxcUrl.concat(lxcName).concat(".tgz");
 
 		const lxcDownloadChecksumUrl = lxcDownloadUrl.concat(".checksum");
 
-		const lxcDowanloadPath = await downloadFile(lxcDownloadUrl, Constants.CLIENT_EXTENSION_CACHE_DIR, lxcName);
+		const lxcDowanloadPath = await downloadFile(lxcDownloadUrl, Constants.CLIENT_EXTENSION_CACHE_DIR, lxcName.concat(".tgz"));
 
-		const lxcDowanloadChecksumPath = await downloadFile(lxcDownloadChecksumUrl, Constants.CLIENT_EXTENSION_CACHE_DIR, lxcName.concat(".checksum"));
+		const lxcDowanloadChecksumPath = await downloadFile(lxcDownloadUrl.concat(".checksum"), Constants.CLIENT_EXTENSION_CACHE_DIR, lxcName.concat(".checksum"));
 
 		if (fs.existsSync(lxcDowanloadChecksumPath) && fs.existsSync(lxcDowanloadPath)){
 			const sha256 = await createSha256(lxcDowanloadPath);
-
 			
 			const lxcChecksum = fs.readFileSync(lxcDowanloadChecksumPath, 'utf-8');
-			console.log("sha256 is " +  sha256);
 
-			console.log("lxcChecksum is " +  lxcChecksum.toString());
 			if (sha256 === lxcChecksum.toString()){
-				return lxcDowanloadPath;
+				upzip(lxcDowanloadPath, path.join(lxcCacheDir, "lxc") );
+				return lxcFilePath;
 			}
 
 			throw new Error("Failed to verify check sum lxc.");
 		}
 
-		// const vscode_java_pack = vscode.extensions.getExtension("vscjava.vscode-java-pack");
-		// const extension = vscode.extensions.getExtension("vscjava.vscode-java-pack");
-
-		// if (extension) {
-		//   const mavenExtension = extension.exports.maven;
-		//   if (mavenExtension) {
-		//     mavenExtension.executeMavenCommand("clean");
-		//   }
-		// }
-
-
 		throw new Error("Failed to download lxc.");
-
 	}
 
 	async function getAvailableClientExtensinTypes(): Promise<QuickPickItem[]> {
-		const lxcPath = await getLxc();
+		const clientExtensionApiJarVersion = await getWorkspaceClientExtensinApiJarVersion();
 
+		const clientExtensionApiJarDownloaUrl = Constants.BASE_RELEASE_URL + "/content/com/liferay/com.liferay.client.extension.type.api/" + clientExtensionApiJarVersion +
+			"/com.liferay.client.extension.type.api-" + clientExtensionApiJarVersion + ".jar";
+
+		const clientExtensionApiJarPath = await downloadFile(clientExtensionApiJarDownloaUrl, Constants.CLIENT_EXTENSION_CACHE_DIR, "com.liferay.client.extension.type.api-" + clientExtensionApiJarVersion + ".jar");
+
+		const clientExtensionTypes = await getJarClassNames(clientExtensionApiJarPath, "com/liferay/client/extension/type");
+
+		return clientExtensionTypes.filter(item => item.length >1).map(label => ({ label }));
+	}
+
+	async function getWorkspaceClientExtensinApiJarVersion(): Promise<string> {
 		const workspacePath = getCurrentWorkspacePath();
-		
-		let moduleTypes: string[] = [];		
 
 		if (!workspacePath){
-			return moduleTypes.map(label => ({ label }));
+			window.showInformationMessage(`${workspacePath} workspae project is invalid.`);
+			throw new Error(`${workspacePath} workspae project is invalid.`);
 		}
 
 		const productKey = getWorkspaceProduct();
 
-		
+		if (!productKey){
+			window.showInformationMessage(`${workspacePath} workspae project is not set product key.`);
+			throw new Error(`${workspacePath} workspae project is not set product key.`);
+		}
 
 		const productInfos = await getProductInfos();
 
@@ -194,34 +250,53 @@ export async function createLiferayClientExtensionProject(context: ExtensionCont
 		const targetPlatformVersion = productInfo?.targetPlatformVersion;
 
 		const firstDashIndex = productKey.indexOf("-"); // 获取第一个横线的索引位置
+
 		const productType = productKey.substring(0, firstDashIndex);
 
 		const releaseBomFileUrl = Constants.BASE_BOM_URL + "release." + productType + ".bom/" + targetPlatformVersion + "/release." + productType + ".bom-" + targetPlatformVersion + ".pom";
 
         const releaseBomPath = await downloadFile(releaseBomFileUrl, Constants.CLIENT_EXTENSION_CACHE_DIR, "release." + productType + ".bom-" + targetPlatformVersion + ".pom");
 
-		//const clientExtensionApiJarVersionElement = findTagsWithCssSelector(releaseBomPath, "//artifactId[text()='com.liferay.client.extension.type.api']/parent::*");
-
-		//const clientExtensionApiJarVersion = findTagsWithCssSelector(releaseBomPath, "artifactId:contains(com.liferay.client.extension.type.api");
-
-		//console.log("clientExtensionApiJarVersion is " + clientExtensionApiJarVersionElement);
-
-		// const clientExtensionApiJarDownloaUrl = "https://repository-cdn.liferay.com/nexus/service/local/repositories/liferay-public-releases" +
-		// "/content/com/liferay/com.liferay.client.extension.type.api/" + clientExtensionApiJarVersion +
-		// 	"/com.liferay.client.extension.type.api-" + clientExtensionApiJarVersion + ".jar";
-
-		// const clientExtensionApiJarPath = await downloadFile(clientExtensionApiJarDownloaUrl, Constants.CLIENT_EXTENSION_CACHE_DIR, "com.liferay.client.extension.type.api-" + clientExtensionApiJarVersion + ".jar");
-
-		// const result  = spawnSync(getJavaExecutable(javahome[0]), ['-jar', bladeJarPath, 'create', '-l'], { encoding: 'utf-8' });
-
-		// if (result.status !== 0) {
-		// 	console.error(result.stderr);
-		// }
-
-		// moduleTypes =  result.stdout.split('\n');
-
-		return moduleTypes.map(label => ({ label }));
+		return findTagsWithCssSelector(releaseBomPath, "com.liferay.client.extension.type.api");
 	}
+
+
+	function getJarClassNames(jarPath: string, directory: string): Promise<string[]> {
+		return new Promise((resolve, reject) => {
+		  let command = '';
+		  if (os.platform() === 'win32') {
+			command = `jar tf ${jarPath.replace(/\//g, '/')} | findstr /i ""${directory}" | findstr /i "\.class$"`;
+		  } else {
+			command = `jar tf ${jarPath} | grep -i "${directory}" | grep -i "\.class$"`;
+		  }
+		  exec(command, (error, stdout, stderr) => {
+			if (error) {
+			  reject(error);
+			} else if (stderr) {
+			  reject(new Error(stderr.trim()));
+			} else {
+				const classNames = stdout.trim().split('\n')
+				.filter(name => {
+					const index = name.lastIndexOf('/');
+					const packageName = name.substring(0,index);
+					if (packageName === directory){
+						return true;
+					}
+					return false;
+				})
+				.filter(name => name.indexOf('.class')>0)
+				.map(name => name.replace(directory, ''))
+				.map(name => name.replace('/', ''))
+				.filter(name => !(name === 'CET'))
+				.filter(name => name.length >1)
+				.map(name => name.replace('CET', ''))
+				.map(name => name.replace('.class', ''));
+					// .map(name => name.charAt(0).toLowerCase() + name.slice(1));
+			  resolve(classNames);
+			}
+		  });
+		});
+	  }
 
 	async function setClientExtensionProjectName(input: ProjectStepInput, state: Partial<State>) {
 		state.name = await input.showInputBox({
@@ -233,7 +308,7 @@ export async function createLiferayClientExtensionProject(context: ExtensionCont
 			validate: validateNameIsUnique,
 			shouldResume: shouldResume
 		});
-		//return (input: ProjectStepInput) => setLiferayClientExtensinType(input, state);
+		return (input: ProjectStepInput) => setLiferayClientExtensinType(input, state);
 	}
 
 
@@ -264,38 +339,109 @@ export async function createLiferayClientExtensionProject(context: ExtensionCont
 		return undefined;
 	}
 
+	async function bladeCreateClientExtensionProject(): Promise<void> {
+		let workspacePath = getCurrentWorkspacePath();
+
+		if (workspacePath){
+			const bladeJarPath = await downloadFile(Constants.BLADE_DOWNLOAD_URL, Constants.BLADE_CACHE_DIR, Constants.BALDE_JAR_NAME);
+		
+			let extensionType = state.extensionType as QuickPickItem;
+			let extensionTypeString = extensionType.label;
+			const commandExtensionType = extensionTypeString.charAt(0).toLowerCase() + extensionTypeString.slice(1)
+
+			let javahome : JavaRuntime[] = await findJavaHomes();
+
+			const result  = spawnSync(getJavaExecutable(javahome[0]), ['-jar', bladeJarPath, 'create', '--base', workspacePath,  '-t', 'client-extension', '-d', path.join(workspacePath,state.name), '--extension-name', state.extensionName, '--extension-type', commandExtensionType , state.name]);
+			
+			if (result.status !== 0) {
+				throw new Error(`Failed to create a ${extensionType} liferay worksapce project for ${state.name}`);
+			}
+			
+			refreshWorkspaceView();
+
+			window.showInformationMessage(`Creating Client Extension Project '${state.name}'`);
+		}
+	}
+
 	async function lxcCreateClientExtensionProject(): Promise<void> {
-		const bladeJarPath = await downloadFile(Constants.BLADE_DOWNLOAD_URL, Constants.BLADE_CACHE_DIR, Constants.BALDE_JAR_NAME);
-		let javahome : JavaRuntime[] = await findJavaHomes();
+		const lxcPath = await getLxc();
 
-		let moduleType = state.extensionType as QuickPickItem;
+		let extensionType = state.extensionType as QuickPickItem;
 
-		let moduleTypeString = moduleType.label;
+		const workspacePath = getCurrentWorkspacePath();
 
-		const index = moduleTypeString.indexOf(" ");
+		if (workspacePath){
+			const clientExtensionApiJarVersion = await getWorkspaceClientExtensinApiJarVersion();
 
-		const type = moduleTypeString.substring(0, index);
+			const clientExtensionApiJarDownloaUrl = Constants.BASE_RELEASE_URL + "/content/com/liferay/com.liferay.client.extension.type.api/" + clientExtensionApiJarVersion +
+				"/com.liferay.client.extension.type.api-" + clientExtensionApiJarVersion + ".jar";
 
-		console.log("module type is " + type);
+			const clientExtensionMap : Map<string, string> = new Map<string, string>();
 
-		let currentLiferayWorkspacePorjectPath = getCurrentWorkspacePath();
+			clientExtensionMap.set('EXTENSION_METADATA_FILE',clientExtensionApiJarDownloaUrl);
 
-		if (!currentLiferayWorkspacePorjectPath || currentLiferayWorkspacePorjectPath === undefined){
-			throw new Error(`Failed to create Liferay Module Project.`);
+			const extensionTypeString = extensionType.label;
+			const commandExtensionType = extensionTypeString.charAt(0).toLowerCase() + extensionTypeString.slice(1)
+			const options = {
+				cwd: path.join(workspacePath,state.name),
+				env: {
+					'EXTENSION_METADATA_FILE' : clientExtensionApiJarDownloaUrl
+				}
+			  };
+
+			const lxcExePath = `${lxcPath.replace(/\\/g, '/')}`;
+
+			const result  = spawn (lxcExePath, ['generate','-i', state.name, '-n', state.extensionName, '-t', commandExtensionType, 'false' ], options); 
+			// 监听子进程的标准输出和标准错误输出
+			result.stdout.on('data', (data) => {
+				console.log(`标准输出：${data}`);
+
+				refreshWorkspaceView();
+
+				window.showInformationMessage(`Creating Client Extension Project ${state.name}`);
+			});
+			
+			result.stderr.on('data', (data) => {
+				console.error(`标准错误输出：${data}`);
+			});
+			
+			// 监听子进程的退出事件
+			result.on('exit', (code, signal) => {
+				if (code !== 0) {
+					console.error(`命令执行出错，错误代码：${code}`);
+				}
+				if (signal) {
+					console.error(`命令被信号中断，信号代码：${signal}`);
+				}
+			});
+			
+			// const result  = execFile(lxcExePath, ['generate','-i', state.name, '-n', state.extensionName, '-t', commandExtensionType, 'true' ], options ,(error, stdout, stderr) => {
+			// 	if (error) {
+			// 		console.error(`exec error: ${error}`);
+			// 		return;
+			// 	  }
+			// 	  console.log(`stdout: ${stdout}`);
+			// 	  console.log(`stderr: ${stderr}`);
+
+
+
+			// });
+
+			// exec(`${lxcExePath} generate -i ${state.name} -n ${state.extensionName} -t ${commandExtensionType} true`, options, (error, stdout, stderr) => {
+			// 	if (error) {
+			// 	  console.error(`exec error: ${error}`);
+			// 	  return;
+			// 	}
+			// 	console.log(`stdout: ${stdout}`);
+			// 	console.error(`stderr: ${stderr}`);
+			//   });
 		}
 
-		const result  = spawnSync(getJavaExecutable(javahome[0]), ['-jar', bladeJarPath, 'create', '-t', type, '--base', currentLiferayWorkspacePorjectPath], { encoding: 'utf-8' });
-
-		if (result.status !== 0) {
-			throw new Error(`Failed to create a ${type} liferay worksapce project for ${state.name}`);
-		}
-
-		refreshWorkspaceView();
 	}
 
 	const state = await initLiferayClientExtension();
 
 	lxcCreateClientExtensionProject();
 
-	window.showInformationMessage(`Creating Application Service '${state.name}'`);
+	
 }

@@ -15,8 +15,12 @@ import * as crypto from 'crypto';
 import { Hash } from 'crypto';
 import * as util from "util";
 import { ExtensionApi as GradleApi, RunTaskOpts, Output } from "vscode-gradle";
-//import * as xmlParser from 'xml-js';
-import * as jsonpath from 'jsonpath';
+import { DOMParser } from 'xmldom';
+import * as xmlQuery from 'xml-query';
+import { XmlNode } from 'xml-query';
+import * as https from 'https';
+import axios from 'axios';
+
 
 
 	// function findParentElements(json: any, selector: string): any[] {
@@ -29,19 +33,29 @@ import * as jsonpath from 'jsonpath';
 	// 	});
 	// }
 
-	// export function findTagsWithCssSelector(filePath: string, cssSelector: string):  any[] {
-	// 	const xml = fs.readFileSync(filePath, 'utf8');
+	export function findTagsWithCssSelector(filePath: string, tagId: string): any {
+		const xmlString = fs.readFileSync(filePath, 'utf8');
 
-	// 	// 将 XML 解析为 JSON 对象
-	// 	const json = xmlParser.xml2json(xml, { compact: true });
+		// 将XML字符串解析为DOM对象
+		const parser = new DOMParser();
+		const xmlDoc = parser.parseFromString(xmlString, "application/xml");
 
-	// 	// 从 JSON 中查找所有符合条件的元素的父元素
-	// 	const artifactId = 'com.liferay.client.extension.type.api';
-	// 	const parentElements = findParentElements(json, `dependency > artifactId[text="${artifactId}"]`);
+		const dependencys = xmlDoc.getElementsByTagName('dependency');
 
-	// 	console.log(parentElements); // 输出所有符合条件的父元素		
-	// 	return parentElements;
-  	// }
+		// 遍历查询结果并输出每本书的信息
+		for (let i = 0; i < dependencys.length; i++) {
+			const dependency = dependencys.item(i);
+
+			if(!dependency){
+				continue;
+			}
+
+			const artifcatId = dependency.getElementsByTagName("artifactId")[0].textContent;;
+			if (artifcatId === tagId) {
+				return dependency.getElementsByTagName("version")[0].textContent;
+			}
+		}
+  	}
 
 	export function getJavaConfiguration(): WorkspaceConfiguration {
 		return workspace.getConfiguration('java');
@@ -108,55 +122,78 @@ import * as jsonpath from 'jsonpath';
 		}
 	}
 
-	export async function downloadFile(url: string, cacheDirName: string, fileName: string): Promise<string> {
-		const cacheDir = path.join(os.homedir(), cacheDirName);	
-		const cacheDirExists = fs.existsSync(cacheDir);
-
-		if (!cacheDirExists) {
-			fs.mkdir(cacheDir, { recursive: true }, (err) => {
-				if (err) {
-					throw new Error(`Failed to create blade cache directory ${cacheDir}.`);
-				}
-				console.log(`Directory ${cacheDir} created successfully`);
-			});		
+	async function getFileLastModifiedTime(fileUrl: string): Promise<Date> {
+		const response = await axios.head(fileUrl, { maxRedirects: 5 });
+		if (response.status === 200) {
+		  const lastModifiedTimeStr = response.headers['last-modified'];
+		  if (lastModifiedTimeStr) {
+			return new Date(lastModifiedTimeStr);
+		  } else {
+			throw new Error(`Failed to get last modified time from ${fileUrl}`);
+		  }
+		} else if (response.status === 302 && response.headers.location) {
+		  // Follow redirect
+		  return getFileLastModifiedTime(response.headers.location);
+		} else {
+		  throw new Error(`Failed to get file info from ${fileUrl}`);
 		}
-	
-		const savePath = path.join(cacheDir, fileName);
+	  }
 
+
+	  export async function downloadFile(url: string, cacheDirName: string, fileName: string): Promise<string> {
+		const cacheDir = path.join(os.homedir(), cacheDirName);
+		const cacheDirExists = fs.existsSync(cacheDir);
+	  
+		if (!cacheDirExists) {
+		  fs.mkdir(cacheDir, { recursive: true }, (err) => {
+			if (err) {
+			  throw new Error(`Failed to create blade cache directory ${cacheDir}.`);
+			}
+			console.log(`Directory ${cacheDir} created successfully`);
+		  });
+		}
+	  
+		const savePath = path.join(cacheDir, fileName);
+	  
 		// Check if the file already exists
 		const fileExists = fs.existsSync(savePath);
 		if (fileExists) {
-		const stats = fs.statSync(savePath);
-		const fileModifiedTime = stats.mtimeMs;
-		// Check if the file needs to be updated
-		const response = await fetch(url);
-		if (!response.ok) {
-			throw new Error(`Failed to download file from ${url}.`);
-		}
-		const remoteModifiedTime = new Date(response.headers.get('last-modified')!).getTime();
-		if (remoteModifiedTime <= fileModifiedTime) {
+		  const stats = fs.statSync(savePath);
+		  const fileModifiedTime = stats.mtimeMs;
+		  const remoteModifiedTime = new Date(await getFileLastModifiedTime(url)).getTime();
+		  if (remoteModifiedTime <= fileModifiedTime) {
 			return savePath;
+		  }
 		}
+	  
+		const response = await axios.get(url, { responseType: 'stream' });
+		if (response.status !== 200) {
+		  throw new Error(`Failed to download file from ${url}.`);
 		}
-	
-		const response = await fetch(url);
-		if (!response.ok) {
-		throw new Error(`Failed to download file from ${url}.`);
+	  
+		const lastModifiedDate = response.headers['last-modified'];
+	  
+		let remoteModifiedTime = new Date();
+		if (lastModifiedDate) {
+		  remoteModifiedTime = new Date(lastModifiedDate);
 		}
-	
+	  
 		const fileStream = fs.createWriteStream(savePath);
-
-		if (response.body === undefined || response.body === null) {
-			throw new Error('Response body is empty');
-		}
-
-		response.body.pipe(fileStream);
-	
+	  
+		response.data.pipe(fileStream);
+	  
 		return new Promise<string>((resolve, reject) => {
-		fileStream.on('finish', () => resolve(savePath));
-		fileStream.on('error', reject);
+		  fileStream.on('finish', () => {
+			fs.utimes(savePath, new Date(), remoteModifiedTime, (err) => {
+			  if (err) {
+				console.error(`Failed to modify file time: ${err}`);
+			  }
+			});
+			resolve(savePath);
+		  });
+		  fileStream.on('error', reject);
 		});
-	}
+	  }
 	
 
 	export function getJavaExecutable(javaHome: JavaRuntime): string{
@@ -285,8 +322,8 @@ import * as jsonpath from 'jsonpath';
 
 		for (const key in jsonObject) {
 			if (Object.prototype.hasOwnProperty.call(jsonObject, key)) {
-			const productInfo = jsonObject[key] as ProductInfo;
-			productInfoMap.set(key, productInfo);
+				const productInfo = jsonObject[key] as ProductInfo;
+				productInfoMap.set(key, productInfo);
 			}
 		}
 
