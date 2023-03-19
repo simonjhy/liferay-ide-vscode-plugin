@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/naming-convention */
 /*---------------------------------------------------------------------------------------------
  *  Copyright (c) Microsoft Corporation. All rights reserved.
  *  Licensed under the MIT License. See License.txt in the project root for license information.
@@ -5,7 +6,7 @@
 
 import { QuickPickItem, window, QuickInputButton, ExtensionContext, Uri } from 'vscode';
 import { ProjectStepInput } from './baseProjectWizard';
-import { exec, execFile, spawn, spawnSync } from 'child_process';
+import { SpawnSyncOptionsWithStringEncoding, exec, execFile, spawn, spawnSync } from 'child_process';
 import { findJavaHomes, JavaRuntime } from '../java-runtime/findJavaHomes';
 import Constants from '../constants';
 import { downloadFile, findMatchingWorkspaceFolder,  findTagsWithCssSelector,  getCurrentWorkspacePath, getJavaExecutable, getProductInfos, refreshWorkspaceView } from '../liferayUtils';
@@ -249,7 +250,7 @@ export async function createLiferayClientExtensionProject(context: ExtensionCont
 
 		const targetPlatformVersion = productInfo?.targetPlatformVersion;
 
-		const firstDashIndex = productKey.indexOf("-"); // 获取第一个横线的索引位置
+		const firstDashIndex = productKey.indexOf("-");
 
 		const productType = productKey.substring(0, firstDashIndex);
 
@@ -288,10 +289,8 @@ export async function createLiferayClientExtensionProject(context: ExtensionCont
 				.map(name => name.replace(directory, ''))
 				.map(name => name.replace('/', ''))
 				.filter(name => !(name === 'CET'))
-				.filter(name => name.length >1)
 				.map(name => name.replace('CET', ''))
 				.map(name => name.replace('.class', ''));
-					// .map(name => name.charAt(0).toLowerCase() + name.slice(1));
 			  resolve(classNames);
 			}
 		  });
@@ -339,30 +338,6 @@ export async function createLiferayClientExtensionProject(context: ExtensionCont
 		return undefined;
 	}
 
-	async function bladeCreateClientExtensionProject(): Promise<void> {
-		let workspacePath = getCurrentWorkspacePath();
-
-		if (workspacePath){
-			const bladeJarPath = await downloadFile(Constants.BLADE_DOWNLOAD_URL, Constants.BLADE_CACHE_DIR, Constants.BALDE_JAR_NAME);
-		
-			let extensionType = state.extensionType as QuickPickItem;
-			let extensionTypeString = extensionType.label;
-			const commandExtensionType = extensionTypeString.charAt(0).toLowerCase() + extensionTypeString.slice(1)
-
-			let javahome : JavaRuntime[] = await findJavaHomes();
-
-			const result  = spawnSync(getJavaExecutable(javahome[0]), ['-jar', bladeJarPath, 'create', '--base', workspacePath,  '-t', 'client-extension', '-d', path.join(workspacePath,state.name), '--extension-name', state.extensionName, '--extension-type', commandExtensionType , state.name]);
-			
-			if (result.status !== 0) {
-				throw new Error(`Failed to create a ${extensionType} liferay worksapce project for ${state.name}`);
-			}
-			
-			refreshWorkspaceView();
-
-			window.showInformationMessage(`Creating Client Extension Project '${state.name}'`);
-		}
-	}
-
 	async function lxcCreateClientExtensionProject(): Promise<void> {
 		const lxcPath = await getLxc();
 
@@ -376,72 +351,31 @@ export async function createLiferayClientExtensionProject(context: ExtensionCont
 			const clientExtensionApiJarDownloaUrl = Constants.BASE_RELEASE_URL + "/content/com/liferay/com.liferay.client.extension.type.api/" + clientExtensionApiJarVersion +
 				"/com.liferay.client.extension.type.api-" + clientExtensionApiJarVersion + ".jar";
 
-			const clientExtensionMap : Map<string, string> = new Map<string, string>();
-
-			clientExtensionMap.set('EXTENSION_METADATA_FILE',clientExtensionApiJarDownloaUrl);
-
 			const extensionTypeString = extensionType.label;
-			const commandExtensionType = extensionTypeString.charAt(0).toLowerCase() + extensionTypeString.slice(1)
-			const options = {
-				cwd: path.join(workspacePath,state.name),
-				env: {
-					'EXTENSION_METADATA_FILE' : clientExtensionApiJarDownloaUrl
-				}
+			const commandExtensionType = extensionTypeString.charAt(0).toLowerCase() + extensionTypeString.slice(1);
+
+			const options: SpawnSyncOptionsWithStringEncoding = {
+				encoding: 'utf-8',
+				cwd: workspacePath,
+				env: { EXTENSION_METADATA_FILE: clientExtensionApiJarDownloaUrl },
+				stdio: 'pipe'
 			  };
 
 			const lxcExePath = `${lxcPath.replace(/\\/g, '/')}`;
-
-			const result  = spawn (lxcExePath, ['generate','-i', state.name, '-n', state.extensionName, '-t', commandExtensionType, 'false' ], options); 
-			// 监听子进程的标准输出和标准错误输出
-			result.stdout.on('data', (data) => {
-				console.log(`标准输出：${data}`);
-
+			  
+			const result = spawnSync(lxcExePath, ['generate', '-i', state.name, '-n', state.extensionName, '-t', commandExtensionType, 'false'], options);
+			  
+			if (result.status === 0) {
 				refreshWorkspaceView();
-
 				window.showInformationMessage(`Creating Client Extension Project ${state.name}`);
-			});
-			
-			result.stderr.on('data', (data) => {
-				console.error(`标准错误输出：${data}`);
-			});
-			
-			// 监听子进程的退出事件
-			result.on('exit', (code, signal) => {
-				if (code !== 0) {
-					console.error(`命令执行出错，错误代码：${code}`);
-				}
-				if (signal) {
-					console.error(`命令被信号中断，信号代码：${signal}`);
-				}
-			});
-			
-			// const result  = execFile(lxcExePath, ['generate','-i', state.name, '-n', state.extensionName, '-t', commandExtensionType, 'true' ], options ,(error, stdout, stderr) => {
-			// 	if (error) {
-			// 		console.error(`exec error: ${error}`);
-			// 		return;
-			// 	  }
-			// 	  console.log(`stdout: ${stdout}`);
-			// 	  console.log(`stderr: ${stderr}`);
-
-
-
-			// });
-
-			// exec(`${lxcExePath} generate -i ${state.name} -n ${state.extensionName} -t ${commandExtensionType} true`, options, (error, stdout, stderr) => {
-			// 	if (error) {
-			// 	  console.error(`exec error: ${error}`);
-			// 	  return;
-			// 	}
-			// 	console.log(`stdout: ${stdout}`);
-			// 	console.error(`stderr: ${stderr}`);
-			//   });
+			}
+			else{
+				throw new Error("Failed to create client extension project.");
+			}
 		}
-
 	}
 
 	const state = await initLiferayClientExtension();
 
 	lxcCreateClientExtensionProject();
-
-	
 }

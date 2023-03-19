@@ -155,7 +155,7 @@ export async function createLiferayModuleProject(context: ExtensionContext) {
 		const result  = spawnSync(getJavaExecutable(javahome[0]), ['-jar', bladeJarPath, 'create', '-t', type, '--base', currentLiferayWorkspacePorjectPath, '-p', state.packageName, state.name], { encoding: 'utf-8' });
 
 		if (result.status !== 0) {
-			throw new Error(`Failed to create a ${type} liferay worksapce project for ${state.name}`);
+			throw new Error(`Failed to create a ${type} liferay worksapce project for  ${state.name}`);
 		}
 
 		refreshWorkspaceView();
