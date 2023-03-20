@@ -1,4 +1,9 @@
-import { QuickPickItem, QuickInputButton, QuickInput, Disposable, window, QuickInputButtons } from "vscode";
+import { QuickPickItem, QuickInputButton, QuickInput, Disposable, window, QuickInputButtons, Uri } from "vscode";
+
+export class ExtraButton implements QuickInputButton {
+	constructor(public iconPath: { light: Uri; dark: Uri; }, public tooltip: string) { }
+}
+
 
 
 export class InputFlowAction {

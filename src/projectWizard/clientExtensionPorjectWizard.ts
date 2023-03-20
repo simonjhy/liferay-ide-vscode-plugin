@@ -4,12 +4,11 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { QuickPickItem, window, QuickInputButton, ExtensionContext, Uri } from 'vscode';
-import { ProjectStepInput } from './baseProjectWizard';
-import { SpawnSyncOptionsWithStringEncoding, exec, execFile, spawn, spawnSync } from 'child_process';
-import { findJavaHomes, JavaRuntime } from '../java-runtime/findJavaHomes';
+import { QuickPickItem, window, ExtensionContext, Uri } from 'vscode';
+import { ExtraButton, ProjectStepInput } from './baseProjectWizard';
+import { SpawnSyncOptionsWithStringEncoding, exec, spawnSync } from 'child_process';
 import Constants from '../constants';
-import { downloadFile, findMatchingWorkspaceFolder,  findTagsWithCssSelector,  getCurrentWorkspacePath, getJavaExecutable, getProductInfos, refreshWorkspaceView } from '../liferayUtils';
+import { downloadFile, findMatchingWorkspaceFolder,  findTagsWithCssSelector,  getCurrentWorkspacePath, getProductInfos, refreshWorkspaceView } from '../liferayUtils';
 import path = require('path');
 import { isLiferayGradleWorkspace } from '../workspaceUtil';
 import * as fs from 'fs';
@@ -19,17 +18,16 @@ import * as properties from "properties-parser";
 import * as os from 'os';
 import * as zlib from 'zlib';
 import * as tar from 'tar';
+import * as yauzl from 'yauzl';
+import { unzip } from 'lodash';
+import * as unzipper from 'unzipper';
 
 export async function createLiferayClientExtensionProject(context: ExtensionContext) {
 
-	class MyButton implements QuickInputButton {
-		constructor(public iconPath: { light: Uri; dark: Uri; }, public tooltip: string) { }
-	}
-
-	const createResourceGroupButton = new MyButton({
+	const CreateSampleClientExtensionButton = new ExtraButton({
 		dark: Uri.file(context.asAbsolutePath('resources/dark/add.svg')),
 		light: Uri.file(context.asAbsolutePath('resources/light/add.svg')),
-	}, 'Create Resource Group');
+	}, 'Create Client Extension Sample');
 
 	interface State {
 		title: string;
@@ -38,6 +36,7 @@ export async function createLiferayClientExtensionProject(context: ExtensionCont
 		extensionType: QuickPickItem | string;
 		name: string;
 		extensionName: string;
+		sampleExtensionType: QuickPickItem | string;
 	}
 
 	async function initLiferayClientExtension() {
@@ -61,15 +60,79 @@ export async function createLiferayClientExtensionProject(context: ExtensionCont
 			shouldResume: shouldResume,
 			initQuickItems: getAvailableClientExtensinTypes
 		});
+
 		state.extensionType = pick;
 		return (input: ProjectStepInput) => setLifreayClientExtensionName(input, state);
 	}
 
-	async function getExtensionMetadataFile(): Promise<string>{
-		return "";
+	async function setClientExtensionProjectName(input: ProjectStepInput, state: Partial<State>) {
+		const pick = await input.showInputBox({
+			title,
+			step: 1,
+			totalSteps: 3,
+			value: state.name || '',
+			prompt: 'Choose a unique name for Liferay Client Extension Project',
+			validate: validateNameIsUnique,
+			buttons: [CreateSampleClientExtensionButton],
+			shouldResume: shouldResume
+		});
+		if (pick instanceof ExtraButton) {
+			return (input: ProjectStepInput) => createClientExtensionFromSampleWorkspace(input, state);
+		}
+
+		state.name = pick;
+		return (input: ProjectStepInput) => setLiferayClientExtensinType(input, state);
 	}
 
-	async function upzip(zipPath: string, output: string){
+
+	async function setLifreayClientExtensionName(input: ProjectStepInput, state: Partial<State>) {
+		state.extensionName = await input.showInputBox({
+			title,
+			step: 3,
+			totalSteps: 3,
+			value: state.extensionName || '',
+			prompt: 'Choose a client extension name',
+			validate: validateNameIsUnique,
+			shouldResume: shouldResume
+		});
+	}
+
+	async function createClientExtensionFromSampleWorkspace(input: ProjectStepInput, state: Partial<State>) {
+		const loadingItems: QuickPickItem[] = [{ label: 'Loading.....', description: 'Wait to load liferay sample client extension types' }];
+		state.sampleExtensionType = await input.showQuickPick({
+			title,
+			step: 1,
+			totalSteps: 1,
+			placeholder: 'Choose a Liferay Sample Client Extenstion Type:',
+			items: loadingItems,
+			activeItem: typeof state.sampleExtensionType !== 'string' ? state.sampleExtensionType : undefined,
+			buttons: [],
+			shouldResume: shouldResume,
+			initQuickItems: getAvailableSampleClientExtensinTypes
+		});
+	}
+
+	async function getAvailableSampleClientExtensinTypes(): Promise<QuickPickItem[]> {
+		const sampleClientExtensionWorkspacePath = await downloadFile(Constants.sampleClientExtensionUrl, Constants.IDE_VSCODE_PLUGIN_CACHE_DIR, "com.sample.workspace.client.extension.zip");
+
+		const sampleClientExtensionTypes = new Set<string>();
+		await listZipEntries(sampleClientExtensionWorkspacePath).then((entries) => {
+			entries.filter((entry) => {
+					const parts = entry.split(path.sep);
+					return parts.length === 3 && parts[0] === 'client-extensions';
+				})
+				.map(item => {
+					const parts = item.split(path.sep);
+					return parts[1];
+				})
+				.forEach(item =>{
+					sampleClientExtensionTypes.add(item);
+				});
+  		});
+		return Array.from(sampleClientExtensionTypes).map(label => ({ label }));
+	}
+
+	async function unpackTgz(zipPath: string, output: string){
 		if (!fs.existsSync(output)) {
 			fs.mkdirSync(output);
 		}
@@ -127,7 +190,7 @@ export async function createLiferayClientExtensionProject(context: ExtensionCont
 	}
 
 	async function getLxc(): Promise<string> {
-		const lxcCacheDir = path.join(os.homedir(), Constants.CLIENT_EXTENSION_CACHE_DIR);
+		const lxcCacheDir = path.join(os.homedir(), Constants.IDE_VSCODE_PLUGIN_CACHE_DIR);
 
 		const lxcUnzipPath = path.join(lxcCacheDir, "lxc");
 		let  lxcFilePath = path.join(lxcUnzipPath, 'lxc');
@@ -168,7 +231,7 @@ export async function createLiferayClientExtensionProject(context: ExtensionCont
 
 		
 		const lxcZipPath = path.join(lxcCacheDir, lxcName).concat(".tgz");
-		const lxcZipChecksumPath = path.join(lxcCacheDir, lxcName).concat(".tgz").concat(".checksum")
+		const lxcZipChecksumPath = path.join(lxcCacheDir, lxcName).concat(".tgz").concat(".checksum");
 
 		if (fs.existsSync(lxcZipPath) && fs.existsSync(lxcZipChecksumPath)){
 			const sha256 = await createSha256(lxcZipPath);
@@ -176,7 +239,7 @@ export async function createLiferayClientExtensionProject(context: ExtensionCont
 			const lxcChecksum = fs.readFileSync(lxcZipChecksumPath, 'utf-8');
 
 			if (sha256 === lxcChecksum.toString()){
-				upzip(lxcZipPath, path.join(lxcCacheDir, "lxc") );
+				await unpackTgz(lxcZipPath, path.join(lxcCacheDir, "lxc") );
 				return lxcFilePath;
 			}
 
@@ -196,9 +259,9 @@ export async function createLiferayClientExtensionProject(context: ExtensionCont
 
 		const lxcDownloadChecksumUrl = lxcDownloadUrl.concat(".checksum");
 
-		const lxcDowanloadPath = await downloadFile(lxcDownloadUrl, Constants.CLIENT_EXTENSION_CACHE_DIR, lxcName.concat(".tgz"));
+		const lxcDowanloadPath = await downloadFile(lxcDownloadUrl, Constants.IDE_VSCODE_PLUGIN_CACHE_DIR, lxcName.concat(".tgz"));
 
-		const lxcDowanloadChecksumPath = await downloadFile(lxcDownloadUrl.concat(".checksum"), Constants.CLIENT_EXTENSION_CACHE_DIR, lxcName.concat(".checksum"));
+		const lxcDowanloadChecksumPath = await downloadFile(lxcDownloadUrl.concat(".checksum"), Constants.IDE_VSCODE_PLUGIN_CACHE_DIR, lxcName.concat(".checksum"));
 
 		if (fs.existsSync(lxcDowanloadChecksumPath) && fs.existsSync(lxcDowanloadPath)){
 			const sha256 = await createSha256(lxcDowanloadPath);
@@ -206,7 +269,7 @@ export async function createLiferayClientExtensionProject(context: ExtensionCont
 			const lxcChecksum = fs.readFileSync(lxcDowanloadChecksumPath, 'utf-8');
 
 			if (sha256 === lxcChecksum.toString()){
-				upzip(lxcDowanloadPath, path.join(lxcCacheDir, "lxc") );
+				await unpackTgz(lxcDowanloadPath, path.join(lxcCacheDir, "lxc") );
 				return lxcFilePath;
 			}
 
@@ -222,7 +285,7 @@ export async function createLiferayClientExtensionProject(context: ExtensionCont
 		const clientExtensionApiJarDownloaUrl = Constants.BASE_RELEASE_URL + "/content/com/liferay/com.liferay.client.extension.type.api/" + clientExtensionApiJarVersion +
 			"/com.liferay.client.extension.type.api-" + clientExtensionApiJarVersion + ".jar";
 
-		const clientExtensionApiJarPath = await downloadFile(clientExtensionApiJarDownloaUrl, Constants.CLIENT_EXTENSION_CACHE_DIR, "com.liferay.client.extension.type.api-" + clientExtensionApiJarVersion + ".jar");
+		const clientExtensionApiJarPath = await downloadFile(clientExtensionApiJarDownloaUrl, Constants.IDE_VSCODE_PLUGIN_CACHE_DIR, "com.liferay.client.extension.type.api-" + clientExtensionApiJarVersion + ".jar");
 
 		const clientExtensionTypes = await getJarClassNames(clientExtensionApiJarPath, "com/liferay/client/extension/type");
 
@@ -256,11 +319,32 @@ export async function createLiferayClientExtensionProject(context: ExtensionCont
 
 		const releaseBomFileUrl = Constants.BASE_BOM_URL + "release." + productType + ".bom/" + targetPlatformVersion + "/release." + productType + ".bom-" + targetPlatformVersion + ".pom";
 
-        const releaseBomPath = await downloadFile(releaseBomFileUrl, Constants.CLIENT_EXTENSION_CACHE_DIR, "release." + productType + ".bom-" + targetPlatformVersion + ".pom");
+        const releaseBomPath = await downloadFile(releaseBomFileUrl, Constants.IDE_VSCODE_PLUGIN_CACHE_DIR, "release." + productType + ".bom-" + targetPlatformVersion + ".pom");
 
 		return findTagsWithCssSelector(releaseBomPath, "com.liferay.client.extension.type.api");
 	}
 
+	function listZipEntries(zipFilePath: string): Promise<string[]> {
+		return new Promise((resolve, reject) => {
+		  const entries: string[] = [];
+	  
+		  yauzl.open(zipFilePath, { lazyEntries: true }, (err, zipfile) => {
+			if (err) {reject(err);}
+	  
+			zipfile.readEntry();
+	  
+			zipfile.on('entry', (entry) => {
+				entries.push(entry.fileName);
+				zipfile.readEntry();
+			});
+	  
+			zipfile.on('end', () => {
+			  resolve(entries);
+			});
+		  });
+		});
+	}
+	  
 
 	function getJarClassNames(jarPath: string, directory: string): Promise<string[]> {
 		return new Promise((resolve, reject) => {
@@ -297,32 +381,6 @@ export async function createLiferayClientExtensionProject(context: ExtensionCont
 		});
 	  }
 
-	async function setClientExtensionProjectName(input: ProjectStepInput, state: Partial<State>) {
-		state.name = await input.showInputBox({
-			title,
-			step: 1,
-			totalSteps: 3,
-			value: state.name || '',
-			prompt: 'Choose a unique name for Liferay Client Extension Project',
-			validate: validateNameIsUnique,
-			shouldResume: shouldResume
-		});
-		return (input: ProjectStepInput) => setLiferayClientExtensinType(input, state);
-	}
-
-
-	async function setLifreayClientExtensionName(input: ProjectStepInput, state: Partial<State>) {
-		state.extensionName = await input.showInputBox({
-			title,
-			step: 3,
-			totalSteps: 3,
-			value: state.extensionName || '',
-			prompt: 'Choose a client extension name',
-			validate: validateNameIsUnique,
-			shouldResume: shouldResume
-		});
-	}
-
 	function shouldResume() {
 		// Could show a notification with the option to resume.
 		return new Promise<boolean>((_resolve, _reject) => {
@@ -338,43 +396,102 @@ export async function createLiferayClientExtensionProject(context: ExtensionCont
 		return undefined;
 	}
 
-	async function lxcCreateClientExtensionProject(): Promise<void> {
-		const lxcPath = await getLxc();
+	async function unpackZip(zipPath: string, output: string){
+		if (!fs.existsSync(output)) {
+			fs.mkdirSync(output, { recursive: true });
+		}
 
-		let extensionType = state.extensionType as QuickPickItem;
+		fs.createReadStream(zipPath)
+		.pipe(
+			unzipper.Parse()
+		).on('entry', (entry) => {
+		  const entryPath = entry.path;
+		  const targetPath = path.join(output, entryPath);
+
+		  if (entry.type === 'Directory') {
+			fs.mkdirSync(targetPath, { recursive: true });
+		  } else {
+			entry.pipe(fs.createWriteStream(targetPath));
+		  }
+		}).on('error', (error) => {
+		  	console.error(`An error occurred while unzipping the file: ${error}`);
+		}).on('finish', () => {
+		  	console.log('Unzip completed successfully!');
+		});
+	}
+
+	function copyDir(srcPath: string, destPath: string) {
+		if (!fs.existsSync(destPath)) {
+		  fs.mkdirSync(destPath, { recursive: true });
+		}
+	  
+		const entries = fs.readdirSync(srcPath, { withFileTypes: true });
+	  
+		entries.forEach(entry => {
+		  const srcFullPath = path.join(srcPath, entry.name);
+		  const destFullPath = path.join(destPath, entry.name);
+	  
+		  if (entry.isDirectory()) {
+			copyDir(srcFullPath, destFullPath);
+		  } else {
+			fs.copyFileSync(srcFullPath, destFullPath);
+		  }
+		});
+	  }
+
+	async function lxcCreateClientExtensionProject(): Promise<void> {
 
 		const workspacePath = getCurrentWorkspacePath();
-
+	
 		if (workspacePath){
-			const clientExtensionApiJarVersion = await getWorkspaceClientExtensinApiJarVersion();
+			if (state.extensionType){
+				const lxcPath = await getLxc();
 
-			const clientExtensionApiJarDownloaUrl = Constants.BASE_RELEASE_URL + "/content/com/liferay/com.liferay.client.extension.type.api/" + clientExtensionApiJarVersion +
-				"/com.liferay.client.extension.type.api-" + clientExtensionApiJarVersion + ".jar";
+				let extensionType = state.extensionType as QuickPickItem;
+		
 
-			const extensionTypeString = extensionType.label;
-			const commandExtensionType = extensionTypeString.charAt(0).toLowerCase() + extensionTypeString.slice(1);
+				const clientExtensionApiJarVersion = await getWorkspaceClientExtensinApiJarVersion();
 
-			const options: SpawnSyncOptionsWithStringEncoding = {
-				encoding: 'utf-8',
-				cwd: workspacePath,
-				env: { EXTENSION_METADATA_FILE: clientExtensionApiJarDownloaUrl },
-				stdio: 'pipe'
-			  };
+				const clientExtensionApiJarDownloaUrl = Constants.BASE_RELEASE_URL + "/content/com/liferay/com.liferay.client.extension.type.api/" + clientExtensionApiJarVersion +
+					"/com.liferay.client.extension.type.api-" + clientExtensionApiJarVersion + ".jar";
 
-			const lxcExePath = `${lxcPath.replace(/\\/g, '/')}`;
-			  
-			const result = spawnSync(lxcExePath, ['generate', '-i', state.name, '-n', state.extensionName, '-t', commandExtensionType, 'false'], options);
-			  
-			if (result.status === 0) {
-				refreshWorkspaceView();
-				window.showInformationMessage(`Creating Client Extension Project ${state.name}`);
+				const extensionTypeString = extensionType.label;
+				const commandExtensionType = extensionTypeString.charAt(0).toLowerCase() + extensionTypeString.slice(1);
+
+				const options: SpawnSyncOptionsWithStringEncoding = {
+					encoding: 'utf-8',
+					cwd: workspacePath,
+					env: { EXTENSION_METADATA_FILE: clientExtensionApiJarDownloaUrl },
+					stdio: 'pipe'
+					};
+
+				const lxcExePath = `${lxcPath.replace(/\\/g, '/')}`;
+					
+				const result = spawnSync(lxcExePath, ['generate', '-i', state.name, '-n', state.extensionName, '-t', commandExtensionType, 'false'], options);
+					
+				if (result.status !== 0) {
+					throw new Error("Failed to create client extension project.");
+				}
 			}
-			else{
-				throw new Error("Failed to create client extension project.");
+			else if (state.sampleExtensionType){
+				const sampleClientExtensionWorkspacePath = await downloadFile(Constants.sampleClientExtensionUrl, Constants.IDE_VSCODE_PLUGIN_CACHE_DIR, "com.sample.workspace.client.extension.zip");
+				const clientExtensionCacheDir = path.join(os.homedir(), Constants.IDE_VSCODE_PLUGIN_CACHE_DIR);
+				const sampleClientExtensionDir = path.join(clientExtensionCacheDir, "sample_client_extension");
+				await unpackZip(sampleClientExtensionWorkspacePath, sampleClientExtensionDir);
+
+				const clientExtensionDir = path.join(sampleClientExtensionDir, "client-extensions");
+
+				let sampleExtensionType = state.sampleExtensionType as QuickPickItem;
+
+				copyDir(path.join(clientExtensionDir,sampleExtensionType.label), path.join(workspacePath,sampleExtensionType.label));
 			}
+
+			refreshWorkspaceView();
+			window.showInformationMessage(`Creating Client Extension Project ${state.name}`);
 		}
 	}
 
+	
 	const state = await initLiferayClientExtension();
 
 	lxcCreateClientExtensionProject();

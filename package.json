@@ -75,9 +75,11 @@
     "@types/node": "16.x",
     "@types/properties-parser": "^0.3.0",
     "@types/tar": "^6.1.4",
+    "@types/unzipper": "^0.10.5",
     "@types/vscode": "^1.0.0",
     "@types/winreg": "^1.2.30",
     "@types/xmldom": "^0.6.0",
+    "@types/yauzl": "^2.10.0",
     "@typescript-eslint/eslint-plugin": "^5.45.0",
     "@typescript-eslint/parser": "^5.45.0",
     "@vscode/test-electron": "^2.2.3",
@@ -91,6 +93,7 @@
     "webpack-cli": "^5.0.1"
   },
   "dependencies": {
+    "@types/yauzl": "^2.10.0",
     "axios": "^0.21.4",
     "expand-home-dir": "0.0.3",
     "find-java-home": "1.1.0",
@@ -101,10 +104,12 @@
     "node-fetch": "^3.1.0",
     "properties-parser": "^0.3.1",
     "tar": "^6.1.13",
+    "unzipper": "^0.10.11",
     "vscode": "^1.0.0",
     "vscode-gradle": "^3.12.6",
     "winreg-utf8": "^0.1.1",
     "xml-query": "^1.5.0",
-    "xmldom": "^0.6.0"
+    "xmldom": "^0.6.0",
+    "yauzl": "^2.10.0"
   }
 }
