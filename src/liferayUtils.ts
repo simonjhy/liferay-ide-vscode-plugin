@@ -214,11 +214,6 @@ import axios from 'axios';
 	}
 
 	export async function openCurrentLiferayWorkspaceProject(workspacePath: string): Promise<void> {
-		const folderPath = vscode.workspace.workspaceFolders || (vscode.window.activeTextEditor && path.dirname(vscode.window.activeTextEditor.document.uri.fsPath));
-		if (!folderPath) {
-		vscode.window.showErrorMessage('Can not open the workspace project');
-		return;
-		}
 		const folderUri = vscode.Uri.file(workspacePath);
 	
 		const workspaceFolders = vscode.workspace.workspaceFolders;

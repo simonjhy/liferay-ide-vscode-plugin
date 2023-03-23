@@ -4,6 +4,8 @@
  * Commonly used commands
  */
 namespace Constants {
+    export const LIFERAY_VSCODE_PLUGIN_NAME = 'liferayVscode';
+
     export const NEW_LIFERAY_WORKSAPCE = 'new.liferay.workspace';
 
     export const NEW_LIFERAY_CLIENT_EXTENSION = 'new.liferay.client.extension';
@@ -46,9 +48,16 @@ namespace Constants {
 
     export const IDE_VSCODE_PLUGIN_CACHE_DIR = '.liferay/vscode-plugin'; 
 
+    export const IDE_VSCODE_PLUGIN_RELEASE_BOM_CACHE_DIR = '.liferay/vscode-plugin/release-bom'; 
+
     export const BASE_RELEASE_URL = "https://repository-cdn.liferay.com/nexus/service/local/repositories/liferay-public-releases";
 
     export const sampleClientExtensionUrl = "https://repository.liferay.com/nexus/service/local/artifact/maven/content?r=liferay-public-releases&g=com.liferay.workspace&a=com.sample.workspace&v=LATEST&p=zip";
+
+    export const NEW_LIFERAY_SET_LOG_LEVEL_COMMAND = 'new.liferay.set.loglevel';
+
+    export const EXTENSION_PUBLISHER = 'liferay';
+    export const EXTENSION_PLUGIN_ID = 'liferay-ide-vscode-plugin';
 }
 
 export default Constants;

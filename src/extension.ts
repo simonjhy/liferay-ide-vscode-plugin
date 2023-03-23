@@ -8,9 +8,30 @@ import { initLiferayWorkpsceProject as Gradle } from './projectWizard/workspaceP
 import { initLiferayWorkpsceProject as Maven } from './projectWizard/workspaceProjectWizard';
 import { createLiferayModuleProject } from './projectWizard/modulePorjectWizard';
 import { createLiferayClientExtensionProject } from './projectWizard/clientExtensionPorjectWizard';
+import { LiferayConfigManager } from './core/liferayCore';
+import Constants from './constants';
 
 export function activate(context: vscode.ExtensionContext) {
-	console.log('Congratulations, your extension "liferay-ide-vscode-plugin" is now active!');
+    const configManager = new LiferayConfigManager();
+    configManager.setDefaultConfig();
+
+    const configChangeListener = configManager.registerConfigChangeListener();
+    context.subscriptions.push(configChangeListener);
+
+    context.subscriptions.push(vscode.commands.registerCommand(Constants.NEW_LIFERAY_SET_LOG_LEVEL_COMMAND, async () => {
+        const logLevel = await vscode.window.showQuickPick(['debug', 'info', 'warn', 'error'], {
+            placeHolder: 'Select log level',
+            canPickMany: false,
+            ignoreFocusOut: true
+        });
+        if (logLevel) {
+            configManager.setLogLevel(logLevel);
+        }
+    }));
+
+	const logger = configManager.getLogger();
+
+	logger.log('Congratulations, your extension "liferay-ide-vscode-plugin" is now active!');
 
 	context.subscriptions.push(vscode.commands.registerCommand(Commands.NEW_LIFERAY_WORKSAPCE, async () => {
 		

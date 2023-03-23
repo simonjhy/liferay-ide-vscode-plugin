@@ -3,7 +3,7 @@
   "displayName": "Liferay IDE Vscode Plugin",
   "description": "Liferay IDE Vscode Plugin",
   "version": "0.0.1",
-  "publisher": "Liferay",
+  "publisher": "liferay",
   "engines": {
     "vscode": "^1.76.0"
   },
@@ -93,6 +93,7 @@
     "webpack-cli": "^5.0.1"
   },
   "dependencies": {
+    "@types/winston": "^2.4.4",
     "@types/yauzl": "^2.10.0",
     "axios": "^0.21.4",
     "expand-home-dir": "0.0.3",
@@ -100,6 +101,7 @@
     "fs-extra": "^8.1.0",
     "jdk-utils": "^0.4.4",
     "lodash": "^4.17.21",
+    "log4js": "^6.9.1",
     "mkdirp": "^2.1.5",
     "node-fetch": "^3.1.0",
     "properties-parser": "^0.3.1",

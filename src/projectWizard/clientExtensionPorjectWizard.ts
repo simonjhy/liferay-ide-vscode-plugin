@@ -285,7 +285,7 @@ export async function createLiferayClientExtensionProject(context: ExtensionCont
 		const clientExtensionApiJarDownloaUrl = Constants.BASE_RELEASE_URL + "/content/com/liferay/com.liferay.client.extension.type.api/" + clientExtensionApiJarVersion +
 			"/com.liferay.client.extension.type.api-" + clientExtensionApiJarVersion + ".jar";
 
-		const clientExtensionApiJarPath = await downloadFile(clientExtensionApiJarDownloaUrl, Constants.IDE_VSCODE_PLUGIN_CACHE_DIR, "com.liferay.client.extension.type.api-" + clientExtensionApiJarVersion + ".jar");
+		const clientExtensionApiJarPath = await downloadFile(clientExtensionApiJarDownloaUrl, Constants.IDE_VSCODE_PLUGIN_RELEASE_BOM_CACHE_DIR, "com.liferay.client.extension.type.api-" + clientExtensionApiJarVersion + ".jar");
 
 		const clientExtensionTypes = await getJarClassNames(clientExtensionApiJarPath, "com/liferay/client/extension/type");
 
@@ -319,7 +319,7 @@ export async function createLiferayClientExtensionProject(context: ExtensionCont
 
 		const releaseBomFileUrl = Constants.BASE_BOM_URL + "release." + productType + ".bom/" + targetPlatformVersion + "/release." + productType + ".bom-" + targetPlatformVersion + ".pom";
 
-        const releaseBomPath = await downloadFile(releaseBomFileUrl, Constants.IDE_VSCODE_PLUGIN_CACHE_DIR, "release." + productType + ".bom-" + targetPlatformVersion + ".pom");
+        const releaseBomPath = await downloadFile(releaseBomFileUrl, Constants.IDE_VSCODE_PLUGIN_RELEASE_BOM_CACHE_DIR, "release." + productType + ".bom-" + targetPlatformVersion + ".pom");
 
 		return findTagsWithCssSelector(releaseBomPath, "com.liferay.client.extension.type.api");
 	}
