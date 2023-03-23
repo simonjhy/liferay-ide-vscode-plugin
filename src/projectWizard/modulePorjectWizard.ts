@@ -8,20 +8,11 @@ import { ProjectStepInput } from './baseProjectWizard';
 import { spawnSync } from 'child_process';
 import { findJavaHomes, JavaRuntime } from '../java-runtime/findJavaHomes';
 import Constants from '../constants';
-import { downloadFile, findDirectoriesContaining, findMatchingWorkspaceFolder, getCurrentWorkspacePath, getJavaExecutable, refreshWorkspaceView } from '../liferayUtils';
+import { downloadFile, findMatchingWorkspaceFolder, getCurrentWorkspacePath, getJavaExecutable, refreshWorkspaceView } from '../liferayUtils';
 import * as vscode from 'vscode';
 import path = require('path');
 
 export async function createLiferayModuleProject(context: ExtensionContext) {
-
-	class MyButton implements QuickInputButton {
-		constructor(public iconPath: { light: Uri; dark: Uri; }, public tooltip: string) { }
-	}
-
-	const createResourceGroupButton = new MyButton({
-		dark: Uri.file(context.asAbsolutePath('resources/dark/add.svg')),
-		light: Uri.file(context.asAbsolutePath('resources/light/add.svg')),
-	}, 'Create Resource Group');
 
 	async function inputResourceGroupName(input: ProjectStepInput, state: Partial<State>) {
 		state.moduleType = await input.showInputBox({
@@ -67,9 +58,7 @@ export async function createLiferayModuleProject(context: ExtensionContext) {
 			initQuickItems: getAvailableModuleTypes
 		});
 		console.log("Choose is [" + state.name + "]");
-		if (pick instanceof MyButton) {
-			return (input: ProjectStepInput) => inputResourceGroupName(input, state);
-		}
+
 		state.moduleType = pick;
 		return (input: ProjectStepInput) => setLifreayModulePackageName(input, state);
 	}

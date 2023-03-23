@@ -1,4 +1,4 @@
-import { QuickPickItem, window, QuickInputButton, ExtensionContext, Uri, ThemeIcon } from 'vscode';
+import { QuickPickItem, window, ExtensionContext } from 'vscode';
 import { ProjectStepInput } from './baseProjectWizard';
 import { spawnSync } from 'child_process';
 import { findJavaHomes, JavaRuntime } from '../java-runtime/findJavaHomes';
@@ -10,15 +10,6 @@ import * as vscode from 'vscode';
 
 
 export async function initLiferayWorkpsceProject(context: ExtensionContext, workspaceType: string) {
-
-	class MyButton implements QuickInputButton {
-		constructor(public iconPath: { light: Uri; dark: Uri; }, public tooltip: string) { }
-	}
-
-	const createResourceGroupButton = new MyButton({
-		dark: Uri.file(context.asAbsolutePath('resources/dark/add.svg')),
-		light: Uri.file(context.asAbsolutePath('resources/light/add.svg')),
-	}, 'Create Resource Group');
 
 	interface State {
 		title: string;
@@ -41,13 +32,6 @@ export async function initLiferayWorkpsceProject(context: ExtensionContext, work
 
 	async function setWorkspaceProduct(input: ProjectStepInput, state: Partial<State>) {
 		
-
-		const showAllButton = new MyButton({
-			dark: Uri.file(context.asAbsolutePath('resources/dark/star.svg')),
-			light: Uri.file(context.asAbsolutePath('resources/light/star.svg')),
-		}, 'Create Resource Group');
-
-
 		const loadingItems: QuickPickItem[] = [{ label: 'Loading.....', description: 'Wait to load workspace product versions' }];
 		const pick = await input.showQuickPick({
 			title,
@@ -56,13 +40,11 @@ export async function initLiferayWorkpsceProject(context: ExtensionContext, work
 			placeholder: 'Please choose a prodcut version:',
 			items: loadingItems,
 			activeItem: typeof state.workspaceProduct !== 'string' ? state.workspaceProduct : undefined,
-			buttons: [showAllButton],
+			buttons: [],
 			shouldResume: shouldResume,
 			initQuickItems: getAvailableProductVersions
 		});
-		if (pick instanceof MyButton) {
-			return (input: ProjectStepInput) => inputResourceGroupName(input, state);
-		}
+
 		state.workspaceProduct = pick;
 	}
 
@@ -81,9 +63,7 @@ export async function initLiferayWorkpsceProject(context: ExtensionContext, work
 			shouldResume: shouldResume,
 			initQuickItems: getAvailableTargetPlatformVersions
 		});
-		if (pick instanceof MyButton) {
-			return (input: ProjectStepInput) => inputResourceGroupName(input, state);
-		}
+
 		state.targetPlatform = pick;
 	}
 
