@@ -3,10 +3,8 @@ import { ProjectStepInput } from './baseProjectWizard';
 import { spawnSync } from 'child_process';
 import { findJavaHomes, JavaRuntime } from '../java-runtime/findJavaHomes';
 import Constants from '../constants';
-import { downloadFile, getBladeJar, getJavaExecutable, getProductInfos, openCurrentLiferayWorkspaceProject, ProductInfo } from '../liferayUtils';
-import * as fs from 'fs';
+import { downloadFile, getBladeJar, getJavaExecutable, getProductInfos, openCurrentLiferayWorkspaceProject } from '../liferayUtils';
 import path = require('path');
-import * as vscode from 'vscode';
 
 
 export async function initLiferayWorkpsceProject(context: ExtensionContext, workspaceType: string) {
@@ -112,19 +110,6 @@ export async function initLiferayWorkpsceProject(context: ExtensionContext, work
 		return productVersions.map(label => ({ label }));
 	}
 
-	async function inputResourceGroupName(input: ProjectStepInput, state: Partial<State>) {
-		state.workspaceProduct = await input.showInputBox({
-			title,
-			step: 2,
-			totalSteps: 4,
-			value: typeof state.workspaceProduct === 'string' ? state.workspaceProduct : '',
-			prompt: 'Choose a unique name for the resource groupqqqqqqqqqqqqqqqqqq',
-			validate: validateNameIsUnique,
-			shouldResume: shouldResume
-		});
-		return (input: ProjectStepInput) => setWorkspaceName(input, state);
-	}
-
 	async function setWorkspacePath(input: ProjectStepInput, state: Partial<State>) {
 		state.path = await input.showInputBox({
 			title,
@@ -159,14 +144,12 @@ export async function initLiferayWorkpsceProject(context: ExtensionContext, work
 	}
 
 	function shouldResume() {
-		// Could show a notification with the option to resume.
 		return new Promise<boolean>((_resolve, _reject) => {
 
 		});
 	}
 
 	async function validateNameIsUnique(name: string) {
-		// ...validate...
 		await new Promise(resolve => setTimeout(resolve, 1000));
 		return name === 'vscode' ? 'Name not unique' : undefined;
 	}

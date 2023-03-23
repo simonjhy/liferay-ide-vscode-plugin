@@ -3,29 +3,14 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { QuickPickItem, window, QuickInputButton, ExtensionContext, Uri, ProgressLocation, workspace } from 'vscode';
+import { QuickPickItem, window, ExtensionContext } from 'vscode';
 import { ProjectStepInput } from './baseProjectWizard';
 import { spawnSync } from 'child_process';
 import { findJavaHomes, JavaRuntime } from '../java-runtime/findJavaHomes';
 import Constants from '../constants';
 import { downloadFile, findMatchingWorkspaceFolder, getCurrentWorkspacePath, getJavaExecutable, refreshWorkspaceView } from '../liferayUtils';
-import * as vscode from 'vscode';
-import path = require('path');
 
 export async function createLiferayModuleProject(context: ExtensionContext) {
-
-	async function inputResourceGroupName(input: ProjectStepInput, state: Partial<State>) {
-		state.moduleType = await input.showInputBox({
-			title,
-			step: 2,
-			totalSteps: 4,
-			value: typeof state.moduleType === 'string' ? state.moduleType : '',
-			prompt: 'Choose a unique name for the resource groupqqqqqqqqqqqqqqqqqq',
-			validate: validateNameIsUnique,
-			shouldResume: shouldResume
-		});
-		return (input: ProjectStepInput) => setLifreayModulePackageName(input, state);
-	}
 
 	interface State {
 		title: string;
@@ -107,7 +92,6 @@ export async function createLiferayModuleProject(context: ExtensionContext) {
 	}
 
 	function shouldResume() {
-		// Could show a notification with the option to resume.
 		return new Promise<boolean>((_resolve, _reject) => {
 
 		});
