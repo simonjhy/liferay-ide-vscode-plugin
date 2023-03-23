@@ -118,11 +118,11 @@ export async function createLiferayClientExtensionProject(context: ExtensionCont
 		const sampleClientExtensionTypes = new Set<string>();
 		await listZipEntries(sampleClientExtensionWorkspacePath).then((entries) => {
 			entries.filter((entry) => {
-					const parts = entry.split(path.sep);
+					const parts = entry.split('/');
 					return parts.length === 3 && parts[0] === 'client-extensions';
 				})
 				.map(item => {
-					const parts = item.split(path.sep);
+					const parts = item.split('/');
 					return parts[1];
 				})
 				.forEach(item =>{
