@@ -9,6 +9,7 @@ import { spawnSync } from 'child_process';
 import { findJavaHomes, JavaRuntime } from '../java-runtime/findJavaHomes';
 import Constants from '../constants';
 import { downloadFile, findMatchingWorkspaceFolder, getCurrentWorkspacePath, getJavaExecutable, refreshWorkspaceView } from '../liferayUtils';
+import { LiferayConfigManager } from '../core/liferayCore';
 
 export async function createLiferayModuleProject(context: ExtensionContext) {
 
@@ -125,9 +126,13 @@ export async function createLiferayModuleProject(context: ExtensionContext) {
 			throw new Error(`Failed to create Liferay Module Project.`);
 		}
 
+		const configManager = new LiferayConfigManager();
+		const logger = configManager.getLogger();
+
 		const result  = spawnSync(getJavaExecutable(javahome[0]), ['-jar', bladeJarPath, 'create', '-t', type, '--base', currentLiferayWorkspacePorjectPath, '-p', state.packageName, state.name], { encoding: 'utf-8' });
 
 		if (result.status !== 0) {
+			logger.log(`Failed to create client extension project, return code is ${result.status}.`);
 			throw new Error(`Failed to create a ${type} liferay worksapce project for  ${state.name}`);
 		}
 

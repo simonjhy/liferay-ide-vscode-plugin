@@ -5,6 +5,7 @@ import { findJavaHomes, JavaRuntime } from '../java-runtime/findJavaHomes';
 import Constants from '../constants';
 import { downloadFile, getBladeJar, getJavaExecutable, getProductInfos, openCurrentLiferayWorkspaceProject } from '../liferayUtils';
 import path = require('path');
+import { LiferayConfigManager } from '../core/liferayCore';
 
 
 export async function initLiferayWorkpsceProject(context: ExtensionContext, workspaceType: string) {
@@ -166,9 +167,13 @@ export async function initLiferayWorkpsceProject(context: ExtensionContext, work
 			version = state.targetPlatform as QuickPickItem;
 		}
 
+		const configManager = new LiferayConfigManager();
+		const logger = configManager.getLogger();
+
 		const result  = spawnSync(getJavaExecutable(javahome[0]), ['-jar', bladeJarPath, 'init', '-v', version.label, '-b', workspaceType.toLocaleLowerCase(), '--base', path.resolve(state.path), state.name], { encoding: 'utf-8' });
 
 		if (result.status !== 0) {
+			logger.log(`Failed to create client extension project, return code is ${result.status}.`);
 			throw new Error(`Failed to init a ${workspaceType} liferay worksapce project in ${state.path}`);
 		}
 

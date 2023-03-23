@@ -21,6 +21,7 @@ import * as tar from 'tar';
 import * as yauzl from 'yauzl';
 import { unzip } from 'lodash';
 import * as unzipper from 'unzipper';
+import { LiferayConfigManager } from '../core/liferayCore';
 
 export async function createLiferayClientExtensionProject(context: ExtensionContext) {
 
@@ -382,7 +383,6 @@ export async function createLiferayClientExtensionProject(context: ExtensionCont
 	  }
 
 	function shouldResume() {
-		// Could show a notification with the option to resume.
 		return new Promise<boolean>((_resolve, _reject) => {
 
 		});
@@ -445,10 +445,13 @@ export async function createLiferayClientExtensionProject(context: ExtensionCont
 	
 		if (workspacePath){
 			if (state.extensionType){
+
+				const configManager = new LiferayConfigManager();
+				const logger = configManager.getLogger();
+
 				const lxcPath = await getLxc();
 
 				let extensionType = state.extensionType as QuickPickItem;
-		
 
 				const clientExtensionApiJarVersion = await getWorkspaceClientExtensinApiJarVersion();
 
@@ -470,6 +473,7 @@ export async function createLiferayClientExtensionProject(context: ExtensionCont
 				const result = spawnSync(lxcExePath, ['generate', '-i', state.name, '-n', state.extensionName, '-t', commandExtensionType, 'false'], options);
 					
 				if (result.status !== 0) {
+					logger.log(`Failed to create client extension project, return code is ${result.status}.`);
 					throw new Error("Failed to create client extension project.");
 				}
 			}

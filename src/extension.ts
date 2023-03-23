@@ -13,7 +13,8 @@ import Constants from './constants';
 
 export function activate(context: vscode.ExtensionContext) {
     const configManager = new LiferayConfigManager();
-    configManager.setDefaultConfig();
+    
+	configManager.setDefaultConfig();
 
     const configChangeListener = configManager.registerConfigChangeListener();
     context.subscriptions.push(configChangeListener);
