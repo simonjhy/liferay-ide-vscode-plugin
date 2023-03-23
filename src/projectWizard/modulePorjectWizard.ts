@@ -1,8 +1,3 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
-
 import { QuickPickItem, window, ExtensionContext } from 'vscode';
 import { ProjectStepInput } from './baseProjectWizard';
 import { spawnSync } from 'child_process';
@@ -10,6 +5,7 @@ import { findJavaHomes, JavaRuntime } from '../java-runtime/findJavaHomes';
 import Constants from '../constants';
 import { downloadFile, findMatchingWorkspaceFolder, getCurrentWorkspacePath, getJavaExecutable, refreshWorkspaceView } from '../liferayUtils';
 import { LiferayConfigManager } from '../core/liferayCore';
+import * as os from 'os';
 
 export async function createLiferayModuleProject(context: ExtensionContext) {
 
@@ -61,9 +57,11 @@ export async function createLiferayModuleProject(context: ExtensionContext) {
 			console.error(result.stderr);
 		}
 
-		moduleTypes =  result.stdout.split('\n');
+		moduleTypes =  result.stdout.split(os.EOL);
 
-		return moduleTypes.map(label => ({ label }));
+		return moduleTypes.filter(item =>{
+			return !item.startsWith('client-extension');
+		}).map(label => ({ label }));
 	}
 
 	async function setLifreayModuleProjectName(input: ProjectStepInput, state: Partial<State>) {

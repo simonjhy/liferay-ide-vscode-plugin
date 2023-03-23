@@ -57,6 +57,7 @@ namespace Constants {
     export const NEW_LIFERAY_SET_LOG_LEVEL_COMMAND = 'new.liferay.set.loglevel';
 
     export const EXTENSION_PUBLISHER = 'liferay';
+
     export const EXTENSION_PLUGIN_ID = 'liferay-ide-vscode-plugin';
 }
 

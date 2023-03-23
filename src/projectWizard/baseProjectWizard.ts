@@ -4,8 +4,6 @@ export class ExtraButton implements QuickInputButton {
 	constructor(public iconPath: { light: Uri; dark: Uri; }, public tooltip: string) { }
 }
 
-
-
 export class InputFlowAction {
 	private constructor() { }
 	static back = new InputFlowAction();
