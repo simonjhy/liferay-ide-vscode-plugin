@@ -360,7 +360,7 @@ export async function createLiferayClientExtensionProject(context: ExtensionCont
 			} else if (stderr) {
 			  reject(new Error(stderr.trim()));
 			} else {
-				const classNames = stdout.trim().split('\n')
+				const classNames = stdout.trim().split(os.EOL)
 				.filter(name => {
 					const index = name.lastIndexOf('/');
 					const packageName = name.substring(0,index);
